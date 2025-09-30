@@ -32,7 +32,7 @@ This comprehensive guide provides an in-depth look at HTTP requests and response
 - **Students** learning web security and penetration testing
 
 ## 🛠️ Quick Start
-
-1. Clone the repository:
+ [Click here to view the website](https://moadh704.github.io/-Complete-HTTP-Guide-for-Bug-Hunters/) 
+or Clone the repository:
 ```bash
 git clone https://github.com/moadh704/http-bug-hunting-guide.git
