@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete HTTP Request & Response Guide for Bug Hunters</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #1a252f;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --info: #17a2b8;
+            --purple: #9b59b6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .network-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+        }
+        
+        .node {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        .connection {
+            position: absolute;
+            height: 2px;
+            background: white;
+            transform-origin: left center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        h1, h2, h3, h4 {
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 0.5rem;
+            margin-top: 2rem;
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            color: var(--secondary);
+        }
+        
+        h4 {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+        
+        p {
+            margin-bottom: 1rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .highlight {
+            background-color: #fff9c4;
+            padding: 1rem;
+            border-left: 4px solid var(--warning);
+            margin: 1rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .security-tip {
+            background-color: #e8f4fd;
+            padding: 1rem;
+            border-left: 4px solid var(--info);
+            margin: 1rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .danger {
+            background-color: #ffebee;
+            padding: 1rem;
+            border-left: 4px solid var(--accent);
+            margin: 1rem 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            position: relative;
+        }
+        
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #555;
+            color: #aaa;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .copy-btn:hover {
+            background: #444;
+            color: white;
+        }
+        
+        .request-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 2rem 0;
+        }
+        
+        .flow-step {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+            width: 100%;
+        }
+        
+        .step-number {
+            background-color: var(--secondary);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .arrow {
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 15px solid var(--secondary);
+            margin: 0.5rem 0;
+        }
+        
+        .interactive-demo {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .demo-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        button:hover {
+            background-color: var(--primary);
+        }
+        
+        .btn-danger {
+            background-color: var(--accent);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+        }
+        
+        .request-view, .response-view {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .vulnerability-list {
+            list-style-type: none;
+        }
+        
+        .vulnerability-item {
+            background: white;
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 4px 4px 0;
+            transition: transform 0.2s;
+        }
+        
+        .vulnerability-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .vulnerability-title {
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .tool-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .tool-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        
+        .tool-item:hover {
+            transform: translateY(-3px);
+        }
+        
+        footer {
+            background-color: var(--dark);
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 2rem;
+        }
+        
+        .tab-container {
+            margin: 2rem 0;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 0.5rem;
+            transition: background-color 0.3s;
+        }
+        
+        .tab:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .tab.active {
+            background-color: white;
+            border-color: #ddd;
+            border-bottom-color: white;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 1rem;
+            background: white;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .status-code-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .status-code-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            border-left: 4px solid var(--info);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-code-item.success {
+            border-left-color: var(--success);
+        }
+        
+        .status-code-item.redirect {
+            border-left-color: var(--warning);
+        }
+        
+        .status-code-item.client-error {
+            border-left-color: var(--accent);
+        }
+        
+        .status-code-item.server-error {
+            border-left-color: var(--purple);
+        }
+        
+        .status-code {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .progress-container {
+            background: #e0e0e0;
+            border-radius: 4px;
+            height: 8px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--secondary);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .checklist {
+            list-style-type: none;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        .checklist-item input {
+            margin-right: 1rem;
+            margin-top: 0.25rem;
+        }
+        
+        .search-box {
+            margin: 1rem 0;
+            display: flex;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            font-size: 1rem;
+        }
+        
+        .search-box button {
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .method-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        
+        .method-get {
+            background: #e7f4e4;
+            color: #2e7d32;
+        }
+        
+        .method-post {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .method-put {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .method-delete {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .quiz-container {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .quiz-question {
+            margin-bottom: 1.5rem;
+        }
+        
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .quiz-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .quiz-option:hover {
+            background: #f5f5f5;
+        }
+        
+        .quiz-option.correct {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+        }
+        
+        .quiz-option.incorrect {
+            background: #ffebee;
+            border: 1px solid #f44336;
+        }
+        
+        .quiz-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .quiz-result.correct {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+            display: block;
+        }
+        
+        .quiz-result.incorrect {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            display: block;
+        }
+        
+        .section-nav {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+        
+        .section-nav-list {
+            display: flex;
+            list-style: none;
+            overflow-x: auto;
+            gap: 1rem;
+            padding: 0.5rem 0;
+        }
+        
+        .section-nav-item a {
+            text-decoration: none;
+            color: var(--dark);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            white-space: nowrap;
+            transition: background-color 0.3s;
+        }
+        
+        .section-nav-item a:hover {
+            background: #f5f5f5;
+        }
+        
+        .section-nav-item.active a {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .section-nav-list {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="network-animation" id="networkAnimation"></div>
+        <div class="container header-content">
+            <h1>Complete HTTP Guide for Bug Hunters</h1>
+            <p>Master HTTP protocols to uncover security vulnerabilities effectively</p>
+        </div>
+    </header>
+    
+    <div class="section-nav">
+        <div class="container">
+            <ul class="section-nav-list">
+                <li class="section-nav-item active"><a href="#introduction">Introduction</a></li>
+                <li class="section-nav-item"><a href="#request-response-flow">Flow</a></li>
+                <li class="section-nav-item"><a href="#http-request">Request</a></li>
+                <li class="section-nav-item"><a href="#http-response">Response</a></li>
+                <li class="section-nav-item"><a href="#interactive-demo">Demo</a></li>
+                <li class="section-nav-item"><a href="#bug-hunting-tips">Vulnerabilities</a></li>
+                <li class="section-nav-item"><a href="#advanced-techniques">Advanced</a></li>
+                <li class="section-nav-item"><a href="#tools">Tools</a></li>
+                <li class="section-nav-item"><a href="#quiz">Quiz</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="container">
+        <section id="introduction">
+            <div class="card">
+                <h2>Introduction to HTTP</h2>
+                <p>HTTP (Hypertext Transfer Protocol) is the foundation of data communication on the World Wide Web. Understanding HTTP requests and responses is crucial for bug hunters to identify security vulnerabilities in web applications.</p>
+                
+                <div class="highlight">
+                    <p><strong>Bug Hunter Tip:</strong> Most web vulnerabilities stem from improper handling of HTTP requests or insecure transmission of data. Mastering HTTP gives you a significant advantage in finding these issues.</p>
+                </div>
+                
+                <h3>Why HTTP Knowledge is Critical for Bug Hunters</h3>
+                <ul>
+                    <li>Understanding how data flows helps identify injection points</li>
+                    <li>Headers often contain sensitive information or misconfigurations</li>
+                    <li>Status codes reveal application behavior and potential information leakage</li>
+                    <li>Request/response manipulation is key to testing for vulnerabilities</li>
+                </ul>
+            </div>
+        </section>
+        
+        <section id="request-response-flow">
+            <h2>HTTP Request & Response Flow</h2>
+            <div class="request-flow">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Client Sends Request</h3>
+                        <p>The client (browser, tool, or script) sends an HTTP request to the server containing method, URL, headers, and optionally a body.</p>
+                        <div class="security-tip">
+                            <p><strong>Testing Point:</strong> This is where you can manipulate requests to test for vulnerabilities like SQLi, XSS, or IDOR.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="arrow"></div>
+                
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Server Processes Request</h3>
+                        <p>The server interprets the request, processes it according to the application logic, and prepares a response.</p>
+                        <div class="security-tip">
+                            <p><strong>Testing Point:</strong> Pay attention to how the server handles malformed requests or unexpected input.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="arrow"></div>
+                
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Server Sends Response</h3>
+                        <p>The server sends back an HTTP response containing status code, headers, and the requested resource or an error message.</p>
+                        <div class="security-tip">
+                            <p><strong>Testing Point:</strong> Analyze responses for information disclosure, error messages, or security header misconfigurations.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="arrow"></div>
+                
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Client Processes Response</h3>
+                        <p>The client receives the response and renders the content, executes scripts, or handles the data accordingly.</p>
+                        <div class="security-tip">
+                            <p><strong>Testing Point:</strong> Check for client-side vulnerabilities like XSS, or analyze how the application handles different response types.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="http-request">
+            <h2>HTTP Request Deep Dive</h2>
+            
+            <div class="tab-container">
+                <div class="tabs">
+                    <div class="tab active" data-tab="request-structure">Structure</div>
+                    <div class="tab" data-tab="request-methods">Methods</div>
+                    <div class="tab" data-tab="request-headers">Headers</div>
+                    <div class="tab" data-tab="request-body">Body</div>
+                    <div class="tab" data-tab="request-parameters">Parameters</div>
+                </div>
+                
+                <div class="tab-content active" id="request-structure">
+                    <h3>HTTP Request Structure</h3>
+                    <p>An HTTP request consists of:</p>
+                    <ul>
+                        <li><strong>Request Line:</strong> Method, URL, and HTTP version</li>
+                        <li><strong>Headers:</strong> Additional information about the request</li>
+                        <li><strong>Empty Line:</strong> Separates headers from body</li>
+                        <li><strong>Body:</strong> Optional data sent with the request</li>
+                    </ul>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>Example HTTP Request</span>
+                            <button class="copy-btn">Copy</button>
+                        </div>
+GET /api/users/123 HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+Accept: application/json
+Authorization: Bearer abc123...
+Cookie: session=xyz789; user=admin
+Content-Type: application/x-www-form-urlencoded
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="request-methods">
+                    <h3>HTTP Request Methods</h3>
+                    <div class="grid">
+                        <div class="card">
+                            <h4><span class="method-badge method-get">GET</span> GET</h4>
+                            <p>Retrieve data from the server. Should not modify data.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Parameters are visible in URL. Check for information disclosure, IDOR, and SSRF vulnerabilities.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4><span class="method-badge method-post">POST</span> POST</h4>
+                            <p>Submit data to be processed. Often used for form submissions.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Check for CSRF vulnerabilities, input validation issues, and business logic flaws.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4><span class="method-badge method-put">PUT</span> PUT</h4>
+                            <p>Replace target resource with uploaded content.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Verify proper authorization checks for resource modification and test for mass assignment.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4><span class="method-badge method-delete">DELETE</span> DELETE</h4>
+                            <p>Remove the target resource.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Critical to check authorization and implement proper access controls. Test for IDOR.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4>Less Common Methods</h4>
+                    <div class="grid">
+                        <div class="card">
+                            <h4>PATCH</h4>
+                            <p>Apply partial modifications to a resource.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Test for mass assignment vulnerabilities where users can update fields they shouldn't have access to.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>OPTIONS</h4>
+                            <p>Describe the communication options for the target resource.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Check for exposed HTTP methods that could be exploited.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>HEAD</h4>
+                            <p>Same as GET but without response body.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Useful for checking if a resource exists without downloading its content.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>TRACE</h4>
+                            <p>Performs a message loop-back test along the path to the target resource.</p>
+                            <div class="danger">
+                                <p><strong>Security Risk:</strong> Can be used in XST (Cross-Site Tracing) attacks. Should be disabled on production servers.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="request-headers">
+                    <h3>Common HTTP Request Headers</h3>
+                    <div class="grid">
+                        <div class="card">
+                            <h4>Authorization</h4>
+                            <p>Contains credentials for HTTP authentication.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Check for weak tokens, JWT issues, or authentication bypass. Test for token leakage.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Cookie</h4>
+                            <p>Contains stored HTTP cookies previously sent by the server.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Look for session fixation, insecure flags, or cookie manipulation vulnerabilities.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>User-Agent</h4>
+                            <p>Identifies the client software.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Can be manipulated for client-side attacks or to bypass restrictions. Check for User-Agent based SQLi.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Content-Type</h4>
+                            <p>Indicates the media type of the request body.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Content type confusion can lead to vulnerabilities like XSS or deserialization attacks.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4>Security-Focused Headers</h4>
+                    <div class="grid">
+                        <div class="card">
+                            <h4>X-Forwarded-For</h4>
+                            <p>Identifies the originating IP address of a client.</p>
+                            <div class="danger">
+                                <p><strong>Security Risk:</strong> Can be spoofed to bypass IP-based restrictions or logging.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Referer</h4>
+                            <p>Address of the previous web page from which a link was followed.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Check if the application properly validates referer headers for CSRF protection.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Origin</h4>
+                            <p>Indicates where a request originates from.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Test CORS misconfigurations by manipulating Origin headers.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="request-body">
+                    <h3>HTTP Request Body</h3>
+                    <p>The request body contains data sent to the server, commonly in these formats:</p>
+                    
+                    <div class="grid">
+                        <div class="card">
+                            <h4>Form Data</h4>
+                            <p>Key-value pairs, typically from HTML forms.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+username=admin&password=secret123&role=user
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Try parameter pollution (same parameter with multiple values) and check how the application handles it.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>JSON</h4>
+                            <p>Structured data in JavaScript Object Notation.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+{
+  "username": "admin",
+  "password": "secret123",
+  "role": "user"
+}
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Test for JSON injection, schema validation bypass, and mass assignment vulnerabilities.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>XML</h4>
+                            <p>Extensible Markup Language for structured data.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+&lt;user&gt;
+  &lt;username&gt;admin&lt;/username&gt;
+  &lt;password&gt;secret123&lt;/password&gt;
+  &lt;role&gt;user&lt;/role&gt;
+&lt;/user&gt;
+                            </div>
+                            <div class="danger">
+                                <p><strong>Security Risk:</strong> XML endpoints may be vulnerable to XXE (XML External Entity) attacks.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="highlight">
+                        <p><strong>Security Note:</strong> Always test different content types and parameter pollution. Many vulnerabilities arise from improper parsing of request bodies. Also test for HTTP Request Smuggling by manipulating Content-Length and Transfer-Encoding headers.</p>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="request-parameters">
+                    <h3>Request Parameters</h3>
+                    <p>Parameters can be sent in different parts of an HTTP request:</p>
+                    
+                    <div class="grid">
+                        <div class="card">
+                            <h4>URL Parameters</h4>
+                            <p>Sent in the query string of the URL after the ? character.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+GET /search?q=test&category=books&limit=10 HTTP/1.1
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> These are visible in logs, browser history, and Referer headers. Check for sensitive data exposure.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Path Parameters</h4>
+                            <p>Sent as part of the URL path, often used in REST APIs.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+GET /api/users/123/posts/456 HTTP/1.1
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Test for IDOR (Insecure Direct Object Reference) by changing these values.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Body Parameters</h4>
+                            <p>Sent in the request body, typically with POST, PUT, or PATCH requests.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+POST /api/users HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+username=admin&password=secret123
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Test for SQL injection, XSS, and command injection in these parameters.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Header Parameters</h4>
+                            <p>Sent as HTTP headers, often used for authentication or metadata.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+X-API-Key: 12345abcde
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Check for hardcoded keys, weak JWT implementations, and header injection vulnerabilities.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="http-response">
+            <h2>HTTP Response Deep Dive</h2>
+            
+            <div class="tab-container">
+                <div class="tabs">
+                    <div class="tab active" data-tab="response-structure">Structure</div>
+                    <div class="tab" data-tab="status-codes">Status Codes</div>
+                    <div class="tab" data-tab="response-headers">Headers</div>
+                    <div class="tab" data-tab="response-body">Body</div>
+                </div>
+                
+                <div class="tab-content active" id="response-structure">
+                    <h3>HTTP Response Structure</h3>
+                    <p>An HTTP response consists of:</p>
+                    <ul>
+                        <li><strong>Status Line:</strong> HTTP version, status code, and status text</li>
+                        <li><strong>Headers:</strong> Metadata about the response</li>
+                        <li><strong>Empty Line:</strong> Separates headers from body</li>
+                        <li><strong>Body:</strong> The requested resource or message</li>
+                    </ul>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>Example HTTP Response</span>
+                            <button class="copy-btn">Copy</button>
+                        </div>
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 45
+Set-Cookie: session=abc123; Secure; HttpOnly
+X-Frame-Options: DENY
+Strict-Transport-Security: max-age=31536000
+
+{"status": "success", "data": "user info"}
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="status-codes">
+                    <h3>HTTP Status Codes</h3>
+                    <div class="status-code-grid">
+                        <div class="status-code-item success">
+                            <div class="status-code">200 OK</div>
+                            <p>Standard successful response.</p>
+                            <div class="security-tip">
+                                <p>Check for sensitive data in successful responses.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item success">
+                            <div class="status-code">201 Created</div>
+                            <p>Resource created successfully.</p>
+                            <div class="security-tip">
+                                <p>Verify the created resource has proper access controls.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item success">
+                            <div class="status-code">204 No Content</div>
+                            <p>Success but no content to return.</p>
+                            <div class="security-tip">
+                                <p>Even with no content, check headers for information leakage.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item redirect">
+                            <div class="status-code">301 Moved Permanently</div>
+                            <p>Resource has a new permanent URL.</p>
+                            <div class="security-tip">
+                                <p>Check if redirects can be exploited for open redirect vulnerabilities.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item redirect">
+                            <div class="status-code">302 Found</div>
+                            <p>Temporary redirection.</p>
+                            <div class="security-tip">
+                                <p>Test for open redirects by manipulating the Location header.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item client-error">
+                            <div class="status-code">400 Bad Request</div>
+                            <p>Malformed request.</p>
+                            <div class="security-tip">
+                                <p>Error messages might reveal application details or vulnerabilities.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item client-error">
+                            <div class="status-code">401 Unauthorized</div>
+                            <p>Authentication required.</p>
+                            <div class="security-tip">
+                                <p>Check for authentication bypass techniques.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item client-error">
+                            <div class="status-code">403 Forbidden</div>
+                            <p>Server refuses to respond.</p>
+                            <div class="security-tip">
+                                <p>Try different HTTP methods or paths to bypass restrictions.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item client-error">
+                            <div class="status-code">404 Not Found</div>
+                            <p>Resource not found.</p>
+                            <div class="security-tip">
+                                <p>Check for information disclosure in error messages.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item server-error">
+                            <div class="status-code">500 Internal Server Error</div>
+                            <p>Generic server error.</p>
+                            <div class="security-tip">
+                                <p>Error messages might reveal backend technology or configuration details.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item server-error">
+                            <div class="status-code">502 Bad Gateway</div>
+                            <p>Invalid response from upstream server.</p>
+                            <div class="security-tip">
+                                <p>Could indicate infrastructure issues or misconfigurations.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="status-code-item server-error">
+                            <div class="status-code">503 Service Unavailable</div>
+                            <p>Server temporarily unavailable.</p>
+                            <div class="security-tip">
+                                <p>Might be caused by resource exhaustion attacks.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="highlight">
+                        <p><strong>Bug Hunter Tip:</strong> Pay close attention to error responses. They often reveal information about the application structure, technologies used, or potential attack vectors. Also test how the application handles unexpected status codes.</p>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="response-headers">
+                    <h3>Important HTTP Response Headers</h3>
+                    <div class="grid">
+                        <div class="card">
+                            <h4>Set-Cookie</h4>
+                            <p>Sets cookies in the client's browser.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Check for missing Secure, HttpOnly, or SameSite flags which can lead to session hijacking.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Content-Security-Policy</h4>
+                            <p>Defines allowed sources for content to prevent XSS.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Weak or missing CSP can allow XSS attacks. Test for bypasses using unsafe-inline or data: URIs.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Strict-Transport-Security</h4>
+                            <p>Forces browsers to use HTTPS.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Missing HSTS headers can allow downgrade attacks. Check for proper max-age and includeSubDomains directives.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>X-Content-Type-Options</h4>
+                            <p>Prevents MIME type sniffing.</p>
+                            <div class="highlight">
+                                <p><strong>Security Note:</strong> Missing this header can lead to content sniffing attacks. Should be set to "nosniff".</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4>Additional Security Headers</h4>
+                    <div class="grid">
+                        <div class="card">
+                            <h4>X-Frame-Options</h4>
+                            <p>Prevents clickjacking by controlling iframe embedding.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Should be set to DENY or SAMEORIGIN. Missing this header allows clickjacking attacks.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Referrer-Policy</h4>
+                            <p>Controls how much referrer information is included in requests.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Prevents leakage of sensitive URL parameters to external sites.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>Feature-Policy</h4>
+                            <p>Allows control over which browser features can be used.</p>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Restricting features like camera, microphone, or geolocation enhances privacy.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="response-body">
+                    <h3>HTTP Response Body</h3>
+                    <p>The response body contains the actual data returned by the server. This can be HTML, JSON, XML, or any other format.</p>
+                    
+                    <div class="grid">
+                        <div class="card">
+                            <h4>HTML Responses</h4>
+                            <p>Typically returned for web pages.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;User Dashboard&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Welcome, admin&lt;/h1&gt;
+  &lt;div&gt;Your user ID is 123&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Check for sensitive data in HTML comments, hidden fields, or JavaScript variables.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>JSON Responses</h4>
+                            <p>Common in APIs and modern web applications.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "id": 123,
+      "username": "admin",
+      "email": "admin@example.com",
+      "role": "administrator"
+    }
+  }
+}
+                            </div>
+                            <div class="security-tip">
+                                <p><strong>Testing Tip:</strong> Look for information disclosure in JSON responses, especially in error messages.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h4>XML Responses</h4>
+                            <p>Used in SOAP APIs and some legacy systems.</p>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Example</span>
+                                    <button class="copy-btn">Copy</button>
+                                </div>
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;response&gt;
+  &lt;status&gt;success&lt;/status&gt;
+  &lt;user&gt;
+    &lt;id&gt;123&lt;/id&gt;
+    &lt;username&gt;admin&lt;/username&gt;
+    &lt;email&gt;admin@example.com&lt;/email&gt;
+  &lt;/user&gt;
+&lt;/response&gt;
+                            </div>
+                            <div class="danger">
+                                <p><strong>Security Risk:</strong> Check for XXE vulnerabilities in XML responses.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="highlight">
+                        <p><strong>Bug Hunter Tip:</strong> Always examine response bodies for information disclosure, even in error messages. Also check for inconsistent responses that might indicate application logic flaws.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="interactive-demo">
+            <h2>Interactive HTTP Request Demo</h2>
+            <div class="interactive-demo">
+                <p>Use this demo to experiment with different HTTP requests and see the responses. Try various methods, headers, and body content to understand how servers respond.</p>
+                
+                <div class="demo-controls">
+                    <select id="http-method">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="HEAD">HEAD</option>
+                        <option value="OPTIONS">OPTIONS</option>
+                    </select>
+                    
+                    <input type="text" id="request-url" placeholder="Enter URL" value="https://jsonplaceholder.typicode.com/posts/1" style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    
+                    <button id="send-request"><i class="fas fa-paper-plane"></i> Send Request</button>
+                    <button id="reset-demo" class="btn-danger"><i class="fas fa-redo"></i> Reset</button>
+                </div>
+                
+                <div>
+                    <h4>Request Headers (JSON format)</h4>
+                    <textarea id="request-headers" rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: 'Courier New', monospace;" placeholder='{"Content-Type": "application/json", "Authorization": "Bearer token123"}'></textarea>
+                </div>
+                
+                <div id="request-body-container">
+                    <h4>Request Body</h4>
+                    <textarea id="request-body" rows="5" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: 'Courier New', monospace;" placeholder='{"title": "test", "body": "content", "userId": 1}'></textarea>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar" id="request-progress"></div>
+                </div>
+                
+                <div>
+                    <h4>Request</h4>
+                    <div class="request-view" id="request-view">
+                        <!-- Request will be displayed here -->
+                    </div>
+                </div>
+                
+                <div>
+                    <h4>Response</h4>
+                    <div class="response-view" id="response-view">
+                        <!-- Response will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="bug-hunting-tips">
+            <h2>Bug Hunting Tips & Common Vulnerabilities</h2>
+            
+            <div class="search-box">
+                <input type="text" id="vulnerability-search" placeholder="Search vulnerabilities...">
+                <button id="search-btn"><i class="fas fa-search"></i> Search</button>
+            </div>
+            
+            <div class="vulnerability-list" id="vulnerability-list">
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-database"></i> Injection Attacks</div>
+                    <p>Occur when untrusted data is sent to an interpreter as part of a command or query.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Send special characters, SQL commands, or script tags in parameters and observe responses for errors or unexpected behavior. Test for SQLi, NoSQLi, OS command injection, and LDAP injection.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> SQLmap, NoSQLmap, Commix</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-user-lock"></i> Broken Authentication</div>
+                    <p>Flaws in authentication mechanisms allow attackers to compromise passwords or session tokens.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Test for weak password policies, session fixation, credential stuffing, or lack of rate limiting on login endpoints. Check for exposed session tokens in URLs or logs.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Suite, OWASP ZAP, custom scripts</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-eye"></i> Sensitive Data Exposure</div>
+                    <p>Applications may not properly protect sensitive data like passwords or personal information.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Check if data is transmitted over unencrypted channels, if passwords are hashed properly, or if sensitive data is exposed in responses. Look for PII, credentials, or API keys in client-side code.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Suite, browser dev tools, grep</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-code"></i> XML External Entities (XXE)</div>
+                    <p>Poorly configured XML processors evaluate external entity references within XML documents.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Send XML with external entity references to endpoints that process XML and observe if they're resolved. Try to read local files or initiate SSRF attacks.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> XXE Injector, custom payloads</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-shield-alt"></i> Broken Access Control</div>
+                    <p>Restrictions on what authenticated users can do are not properly enforced.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Try to access resources belonging to other users, escalate privileges, or bypass authorization checks by manipulating request parameters. Test for IDOR, privilege escalation, and CORS misconfigurations.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Suite, Autorize extension</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-cogs"></i> Security Misconfigurations</div>
+                    <p>Insecure configurations in any part of the application stack.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Check for default credentials, unnecessary services, verbose error messages, missing security headers, or exposed administrative interfaces.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Nmap, Nikto, security headers scanners</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-desktop"></i> Cross-Site Scripting (XSS)</div>
+                    <p>Allows attackers to inject client-side scripts into web pages viewed by other users.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Inject script payloads into all user-input areas and observe if they're executed. Test for reflected, stored, and DOM-based XSS.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> XSS Hunter, BeEF, manual testing</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-exchange-alt"></i> Cross-Site Request Forgery (CSRF)</div>
+                    <p>Tricks users into executing unwanted actions in a web application they're authenticated to.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Create malicious pages that submit requests to the target application and check if they're executed without user interaction. Test state-changing operations.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> CSRF PoC generators, Burp Suite</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-server"></i> Server-Side Request Forgery (SSRF)</div>
+                    <p>Allows attackers to make requests from the server to internal or external resources.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Manipulate URL parameters to make the server request internal resources or external domains you control. Test for access to metadata services in cloud environments.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Collaborator, SSRF testing servers</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="advanced-techniques">
+            <h2>Advanced Bug Hunting Techniques</h2>
+            
+            <div class="grid">
+                <div class="card">
+                    <h3><i class="fas fa-random"></i> HTTP Request Smuggling</h3>
+                    <p>Exploits differences in how servers parse HTTP requests to bypass security controls.</p>
+                    <div class="highlight">
+                        <p><strong>Technique:</strong> Send requests with conflicting Content-Length and Transfer-Encoding headers to poison the request queue.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p>Test with tools like HTTP Request Smuggler or manually craft requests with TE.CL or CL.TE vulnerabilities.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-bolt"></i> Race Conditions</h3>
+                    <p>Exploits timing vulnerabilities in concurrent processing.</p>
+                    <div class="highlight">
+                        <p><strong>Technique:</strong> Send multiple requests simultaneously to exploit limits, balances, or resource allocation.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p>Use tools like Turbo Intruder in Burp Suite or write custom scripts to send concurrent requests.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-project-diagram"></i> API Testing</h3>
+                    <p>Focuses on finding vulnerabilities in API endpoints.</p>
+                    <div class="highlight">
+                        <p><strong>Technique:</strong> Test for mass assignment, broken object level authorization, and excessive data exposure.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p>Use tools like Postman, Insomnia, or Burp Suite with API-specific extensions.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-file-contract"></i> Business Logic Flaws</h3>
+                    <p>Exploits flaws in application workflow rather than technical vulnerabilities.</p>
+                    <div class="highlight">
+                        <p><strong>Technique:</strong> Manipulate application flow to bypass intended restrictions or exploit pricing, inventory, or workflow logic.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p>Requires deep understanding of application functionality. Manual testing is most effective.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>Bug Hunter's Checklist</h3>
+            <ul class="checklist">
+                <li class="checklist-item">
+                    <input type="checkbox" id="check1">
+                    <label for="check1">Test all user inputs for injection vulnerabilities</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check2">
+                    <label for="check2">Verify authentication and session management mechanisms</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check3">
+                    <label for="check3">Check for sensitive data exposure in requests and responses</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check4">
+                    <label for="check4">Test access controls for horizontal and vertical privilege escalation</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check5">
+                    <label for="check5">Validate all security headers are properly implemented</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check6">
+                    <label for="check6">Test for CSRF vulnerabilities on state-changing operations</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check7">
+                    <label for="check7">Check for XSS vulnerabilities in all reflected and stored inputs</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check8">
+                    <label for="check8">Test for XXE in XML processing endpoints</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check9">
+                    <label for="check9">Verify proper error handling without information disclosure</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check10">
+                    <label for="check10">Test for business logic flaws and workflow bypasses</label>
+                </li>
+            </ul>
+        </section>
+        
+        <section id="tools">
+            <h2>Essential Tools for Bug Hunters</h2>
+            <p>These tools help intercept, analyze, and manipulate HTTP traffic:</p>
+            
+            <div class="tool-list">
+                <div class="tool-item">
+                    <h4><i class="fas fa-bug"></i> Burp Suite</h4>
+                    <p>Comprehensive web application security testing platform</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-bolt"></i> OWASP ZAP</h4>
+                    <p>Free and open source web application security scanner</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-wind"></i> Postman</h4>
+                    <p>API development and testing environment</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-terminal"></i> curl</h4>
+                    <p>Command line tool for transferring data with URL syntax</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-code"></i> Browser DevTools</h4>
+                    <p>Built-in browser tools for inspecting network activity</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-network-wired"></i> Nmap</h4>
+                    <p>Network discovery and security auditing tool</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-database"></i> SQLmap</h4>
+                    <p>Automatic SQL injection and database takeover tool</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-file-code"></i> XXE Injector</h4>
+                    <p>Tool for finding and exploiting XXE vulnerabilities</p>
+                </div>
+            </div>
+            
+            <h3>Browser Extensions</h3>
+            <div class="tool-list">
+                <div class="tool-item">
+                    <h4>Cookie Editor</h4>
+                    <p>View, edit, and create cookies</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4>Wappalyzer</h4>
+                    <p>Identify technologies on websites</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4>Retire.js</h4>
+                    <p>Scan for vulnerable JavaScript libraries</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4>Hack-Tools</h4>
+                    <p>Collection of pentesting tools in browser</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="quiz">
+            <h2>Test Your Knowledge</h2>
+            <div class="quiz-container">
+                <div class="quiz-question">
+                    <h3>Question 1: Which HTTP method should be used to retrieve data without modifying it?</h3>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="true">
+                            <input type="radio" name="q1" id="q1a">
+                            <label for="q1a">GET</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q1" id="q1b">
+                            <label for="q1b">POST</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q1" id="q1c">
+                            <label for="q1c">PUT</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q1" id="q1d">
+                            <label for="q1d">DELETE</label>
+                        </div>
+                    </div>
+                    <div class="quiz-result" id="q1-result"></div>
+                </div>
+                
+                <div class="quiz-question">
+                    <h3>Question 2: What status code indicates a successful resource creation?</h3>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q2" id="q2a">
+                            <label for="q2a">200 OK</label>
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+                            <input type="radio" name="q2" id="q2b">
+                            <label for="q2b">201 Created</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q2" id="q2c">
+                            <label for="q2c">204 No Content</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q2" id="q2d">
+                            <label for="q2d">301 Moved Permanently</label>
+                        </div>
+                    </div>
+                    <div class="quiz-result" id="q2-result"></div>
+                </div>
+                
+                <div class="quiz-question">
+                    <h3>Question 3: Which header should be set to prevent clickjacking attacks?</h3>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q3" id="q3a">
+                            <label for="q3a">Content-Security-Policy</label>
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+                            <input type="radio" name="q3" id="q3b">
+                            <label for="q3b">X-Frame-Options</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q3" id="q3c">
+                            <label for="q3c">Strict-Transport-Security</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q3" id="q3d">
+                            <label for="q3d">X-Content-Type-Options</label>
+                        </div>
+                    </div>
+                    <div class="quiz-result" id="q3-result"></div>
+                </div>
+                
+                <button id="check-quiz" class="btn-success"><i class="fas fa-check-circle"></i> Check Answers</button>
+                <button id="reset-quiz" class="btn-danger"><i class="fas fa-redo"></i> Reset Quiz</button>
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>Complete HTTP Request & Response Guide for Bug Hunters</p>
+            <p>Remember: Always get proper authorization before testing websites and follow responsible disclosure practices.</p>
+            <p>Contribute to this guide on <a href="#" style="color: #3498db;">GitHub</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Network animation for header
+        function createNetworkAnimation() {
+            const container = document.getElementById('networkAnimation');
+            const nodeCount = 15;
+            const nodes = [];
+            
+            // Create nodes
+            for (let i = 0; i < nodeCount; i++) {
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.style.left = `${Math.random() * 100}%`;
+                node.style.top = `${Math.random() * 100}%`;
+                container.appendChild(node);
+                nodes.push({
+                    element: node,
+                    x: parseFloat(node.style.left),
+                    y: parseFloat(node.style.top),
+                    vx: (Math.random() - 0.5) * 0.2,
+                    vy: (Math.random() - 0.5) * 0.2
+                });
+            }
+            
+            // Animation loop
+            function animate() {
+                nodes.forEach(node => {
+                    node.x += node.vx;
+                    node.y += node.vy;
+                    
+                    // Bounce off edges
+                    if (node.x < 0 || node.x > 100) node.vx *= -1;
+                    if (node.y < 0 || node.y > 100) node.vy *= -1;
+                    
+                    // Keep within bounds
+                    node.x = Math.max(0, Math.min(100, node.x));
+                    node.y = Math.max(0, Math.min(100, node.y));
+                    
+                    node.element.style.left = `${node.x}%`;
+                    node.element.style.top = `${node.y}%`;
+                });
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+        
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Show corresponding content
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Show/hide request body based on method
+        const httpMethod = document.getElementById('http-method');
+        
+        httpMethod.addEventListener('change', () => {
+            const requestBodyContainer = document.getElementById('request-body-container');
+            if (httpMethod.value === 'POST' || httpMethod.value === 'PUT' || httpMethod.value === 'PATCH') {
+                requestBodyContainer.style.display = 'block';
+            } else {
+                requestBodyContainer.style.display = 'none';
+            }
+        });
+        
+        // Interactive demo
+        document.getElementById('send-request').addEventListener('click', async () => {
+            const method = document.getElementById('http-method').value;
+            const url = document.getElementById('request-url').value;
+            const headersText = document.getElementById('request-headers').value;
+            const bodyText = document.getElementById('request-body').value;
+            const progressBar = document.getElementById('request-progress');
+            
+            // Validate URL
+            if (!url) {
+                alert('Please enter a URL');
+                return;
+            }
+            
+            // Display request
+            let requestDisplay = `${method} ${new URL(url).pathname} HTTP/1.1\nHost: ${new URL(url).host}\n`;
+            
+            let headers = {};
+            if (headersText) {
+                try {
+                    headers = JSON.parse(headersText);
+                    for (const [key, value] of Object.entries(headers)) {
+                        requestDisplay += `${key}: ${value}\n`;
+                    }
+                } catch (e) {
+                    document.getElementById('response-view').textContent = 'Error: Invalid headers JSON';
+                    return;
+                }
+            }
+            
+            if ((method === 'POST' || method === 'PUT' || method === 'PATCH') && bodyText) {
+                requestDisplay += `Content-Length: ${bodyText.length}\n`;
+                requestDisplay += `\n${bodyText}`;
+            }
+            
+            document.getElementById('request-view').textContent = requestDisplay;
+            
+            // Animate progress bar
+            progressBar.style.width = '30%';
+            
+            // Send request and display response
+            try {
+                const options = {
+                    method: method,
+                    headers: headers
+                };
+                
+                if ((method === 'POST' || method === 'PUT' || method === 'PATCH') && bodyText) {
+                    options.body = bodyText;
+                }
+                
+                progressBar.style.width = '60%';
+                
+                const response = await fetch(url, options);
+                const responseText = await response.text();
+                
+                progressBar.style.width = '90%';
+                
+                let responseDisplay = `HTTP/1.1 ${response.status} ${response.statusText}\n`;
+                
+                response.headers.forEach((value, key) => {
+                    responseDisplay += `${key}: ${value}\n`;
+                });
+                
+                responseDisplay += `\n${responseText}`;
+                
+                document.getElementById('response-view').textContent = responseDisplay;
+                
+                progressBar.style.width = '100%';
+                setTimeout(() => {
+                    progressBar.style.width = '0%';
+                }, 1000);
+            } catch (error) {
+                document.getElementById('response-view').textContent = `Error: ${error.message}`;
+                progressBar.style.width = '0%';
+            }
+        });
+        
+        // Reset demo
+        document.getElementById('reset-demo').addEventListener('click', () => {
+            document.getElementById('http-method').value = 'GET';
+            document.getElementById('request-url').value = 'https://jsonplaceholder.typicode.com/posts/1';
+            document.getElementById('request-headers').value = '';
+            document.getElementById('request-body').value = '';
+            document.getElementById('request-view').textContent = '';
+            document.getElementById('response-view').textContent = '';
+            document.getElementById('request-progress').style.width = '0%';
+        });
+        
+        // Copy code blocks
+        document.querySelectorAll('.copy-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const codeBlock = button.parentElement.parentElement;
+                const text = codeBlock.innerText.replace('Copy', '').trim();
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                    }, 2000);
+                });
+            });
+        });
+        
+        // Vulnerability search
+        document.getElementById('search-btn').addEventListener('click', () => {
+            const searchTerm = document.getElementById('vulnerability-search').value.toLowerCase();
+            const items = document.querySelectorAll('.vulnerability-item');
+            
+            items.forEach(item => {
+                const title = item.querySelector('.vulnerability-title').textContent.toLowerCase();
+                const content = item.textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || content.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+        
+        // Quiz functionality
+        document.getElementById('check-quiz').addEventListener('click', () => {
+            let score = 0;
+            const totalQuestions = 3;
+            
+            // Check each question
+            for (let i = 1; i <= totalQuestions; i++) {
+                const options = document.querySelectorAll(`input[name="q${i}"]`);
+                let selectedOption = null;
+                
+                options.forEach(option => {
+                    if (option.checked) {
+                        selectedOption = option.parentElement;
+                    }
+                });
+                
+                const resultElement = document.getElementById(`q${i}-result`);
+                
+                if (selectedOption) {
+                    if (selectedOption.getAttribute('data-correct') === 'true') {
+                        selectedOption.classList.add('correct');
+                        resultElement.textContent = 'Correct!';
+                        resultElement.className = 'quiz-result correct';
+                        score++;
+                    } else {
+                        selectedOption.classList.add('incorrect');
+                        resultElement.textContent = 'Incorrect. Try again.';
+                        resultElement.className = 'quiz-result incorrect';
+                        
+                        // Highlight correct answer
+                        options.forEach(option => {
+                            if (option.parentElement.getAttribute('data-correct') === 'true') {
+                                option.parentElement.classList.add('correct');
+                            }
+                        });
+                    }
+                } else {
+                    resultElement.textContent = 'Please select an answer.';
+                    resultElement.className = 'quiz-result incorrect';
+                }
+            }
+            
+            // Show final score
+            if (score === totalQuestions) {
+                alert(`Perfect! You scored ${score}/${totalQuestions}. Great job!`);
+            } else {
+                alert(`You scored ${score}/${totalQuestions}. Keep learning!`);
+            }
+        });
+        
+        document.getElementById('reset-quiz').addEventListener('click', () => {
+            // Reset all inputs and styles
+            document.querySelectorAll('input[type="radio"]').forEach(input => {
+                input.checked = false;
+            });
+            
+            document.querySelectorAll('.quiz-option').forEach(option => {
+                option.classList.remove('correct', 'incorrect');
+            });
+            
+            document.querySelectorAll('.quiz-result').forEach(result => {
+                result.textContent = '';
+                result.className = 'quiz-result';
+            });
+        });
+        
+        // Section navigation
+        document.querySelectorAll('.section-nav-item a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // Remove active class from all items
+                document.querySelectorAll('.section-nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Add active class to clicked item
+                link.parentElement.classList.add('active');
+                
+                // Scroll to section
+                const targetId = link.getAttribute('href').substring(1);
+                document.getElementById(targetId).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createNetworkAnimation();
+            
+            // Set initial state for request body
+            httpMethod.dispatchEvent(new Event('change'));
+        });
+    </script>
+</body>
+</html>
