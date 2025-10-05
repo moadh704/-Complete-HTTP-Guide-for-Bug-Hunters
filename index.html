@@ -814,7 +814,6 @@ Strict-Transport-Security: max-age=31536000
             </div>
             
             <div class="vulnerability-list" id="vulnerability-list">
-                <!-- Vulnerability items remain the same as before -->
                 <div class="vulnerability-item">
                     <div class="vulnerability-title"><i class="fas fa-database"></i> Injection Attacks</div>
                     <p>Occur when untrusted data is sent to an interpreter as part of a command or query.</p>
@@ -825,8 +824,93 @@ Strict-Transport-Security: max-age=31536000
                         <p><strong>Tools:</strong> SQLmap, NoSQLmap, Commix</p>
                     </div>
                 </div>
+                  <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-user-lock"></i> Broken Authentication</div>
+                    <p>Flaws in authentication mechanisms allow attackers to compromise passwords or session tokens.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Test for weak password policies, session fixation, credential stuffing, or lack of rate limiting on login endpoints. Check for exposed session tokens in URLs or logs.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Suite, OWASP ZAP, custom scripts</p>
+                    </div>
+                </div>
                 
-                <!-- Other vulnerability items... -->
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-eye"></i> Sensitive Data Exposure</div>
+                    <p>Applications may not properly protect sensitive data like passwords or personal information.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Check if data is transmitted over unencrypted channels, if passwords are hashed properly, or if sensitive data is exposed in responses. Look for PII, credentials, or API keys in client-side code.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Suite, browser dev tools, grep</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-code"></i> XML External Entities (XXE)</div>
+                    <p>Poorly configured XML processors evaluate external entity references within XML documents.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Send XML with external entity references to endpoints that process XML and observe if they're resolved. Try to read local files or initiate SSRF attacks.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> XXE Injector, custom payloads</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-shield-alt"></i> Broken Access Control</div>
+                    <p>Restrictions on what authenticated users can do are not properly enforced.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Try to access resources belonging to other users, escalate privileges, or bypass authorization checks by manipulating request parameters. Test for IDOR, privilege escalation, and CORS misconfigurations.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Suite, Autorize extension</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-cogs"></i> Security Misconfigurations</div>
+                    <p>Insecure configurations in any part of the application stack.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Check for default credentials, unnecessary services, verbose error messages, missing security headers, or exposed administrative interfaces.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Nmap, Nikto, security headers scanners</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-desktop"></i> Cross-Site Scripting (XSS)</div>
+                    <p>Allows attackers to inject client-side scripts into web pages viewed by other users.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Inject script payloads into all user-input areas and observe if they're executed. Test for reflected, stored, and DOM-based XSS.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> XSS Hunter, BeEF, manual testing</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-exchange-alt"></i> Cross-Site Request Forgery (CSRF)</div>
+                    <p>Tricks users into executing unwanted actions in a web application they're authenticated to.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Create malicious pages that submit requests to the target application and check if they're executed without user interaction. Test state-changing operations.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> CSRF PoC generators, Burp Suite</p>
+                    </div>
+                </div>
+                
+                <div class="vulnerability-item">
+                    <div class="vulnerability-title"><i class="fas fa-server"></i> Server-Side Request Forgery (SSRF)</div>
+                    <p>Allows attackers to make requests from the server to internal or external resources.</p>
+                    <div class="highlight">
+                        <p><strong>Testing Approach:</strong> Manipulate URL parameters to make the server request internal resources or external domains you control. Test for access to metadata services in cloud environments.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p><strong>Tools:</strong> Burp Collaborator, SSRF testing servers</p>
+                    </div>
+                </div>
             </div>
         </section>
         
@@ -844,8 +928,40 @@ Strict-Transport-Security: max-age=31536000
                         <p>Test with tools like HTTP Request Smuggler or manually craft requests with TE.CL or CL.TE vulnerabilities.</p>
                     </div>
                 </div>
+                <div class="card">
+                    <h3><i class="fas fa-bolt"></i> Race Conditions</h3>
+                    <p>Exploits timing vulnerabilities in concurrent processing.</p>
+                    <div class="highlight">
+                        <p><strong>Technique:</strong> Send multiple requests simultaneously to exploit limits, balances, or resource allocation.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p>Use tools like Turbo Intruder in Burp Suite or write custom scripts to send concurrent requests.</p>
+                    </div>
+                </div>
                 
-                <!-- Other technique cards... -->
+                <div class="card">
+                    <h3><i class="fas fa-project-diagram"></i> API Testing</h3>
+                    <p>Focuses on finding vulnerabilities in API endpoints.</p>
+                    <div class="highlight">
+                        <p><strong>Technique:</strong> Test for mass assignment, broken object level authorization, and excessive data exposure.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p>Use tools like Postman, Insomnia, or Burp Suite with API-specific extensions.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-file-contract"></i> Business Logic Flaws</h3>
+                    <p>Exploits flaws in application workflow rather than technical vulnerabilities.</p>
+                    <div class="highlight">
+                        <p><strong>Technique:</strong> Manipulate application flow to bypass intended restrictions or exploit pricing, inventory, or workflow logic.</p>
+                    </div>
+                    <div class="security-tip">
+                        <p>Requires deep understanding of application functionality. Manual testing is most effective.</p>
+                    </div>
+                </div>
+            </div>
+            
             </div>
             
             <h3>Bug Hunter's Checklist</h3>
@@ -854,7 +970,42 @@ Strict-Transport-Security: max-age=31536000
                     <input type="checkbox" id="check1">
                     <label for="check1">Test all user inputs for injection vulnerabilities</label>
                 </li>
-                <!-- Other checklist items... -->
+                <li class="checklist-item">
+                    <input type="checkbox" id="check2">
+                    <label for="check2">Verify authentication and session management mechanisms</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check3">
+                    <label for="check3">Check for sensitive data exposure in requests and responses</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check4">
+                    <label for="check4">Test access controls for horizontal and vertical privilege escalation</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check5">
+                    <label for="check5">Validate all security headers are properly implemented</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check6">
+                    <label for="check6">Test for CSRF vulnerabilities on state-changing operations</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check7">
+                    <label for="check7">Check for XSS vulnerabilities in all reflected and stored inputs</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check8">
+                    <label for="check8">Test for XXE in XML processing endpoints</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check9">
+                    <label for="check9">Verify proper error handling without information disclosure</label>
+                </li>
+                <li class="checklist-item">
+                    <input type="checkbox" id="check10">
+                    <label for="check10">Test for business logic flaws and workflow bypasses</label>
+                </li>
             </ul>
         </section>
         
@@ -867,8 +1018,65 @@ Strict-Transport-Security: max-age=31536000
                     <h4><i class="fas fa-bug"></i> Burp Suite</h4>
                     <p>Comprehensive web application security testing platform</p>
                 </div>
+                <div class="tool-item">
+                    <h4><i class="fas fa-bolt"></i> OWASP ZAP</h4>
+                    <p>Free and open source web application security scanner</p>
+                </div>
                 
-                <!-- Other tool items... -->
+                <div class="tool-item">
+                    <h4><i class="fas fa-wind"></i> Postman</h4>
+                    <p>API development and testing environment</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-terminal"></i> curl</h4>
+                    <p>Command line tool for transferring data with URL syntax</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-code"></i> Browser DevTools</h4>
+                    <p>Built-in browser tools for inspecting network activity</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-network-wired"></i> Nmap</h4>
+                    <p>Network discovery and security auditing tool</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-database"></i> SQLmap</h4>
+                    <p>Automatic SQL injection and database takeover tool</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4><i class="fas fa-file-code"></i> XXE Injector</h4>
+                    <p>Tool for finding and exploiting XXE vulnerabilities</p>
+                </div>
+            </div>
+            
+            <h3>Browser Extensions</h3>
+            <div class="tool-list">
+                <div class="tool-item">
+                    <h4>Cookie Editor</h4>
+                    <p>View, edit, and create cookies</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4>Wappalyzer</h4>
+                    <p>Identify technologies on websites</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4>Retire.js</h4>
+                    <p>Scan for vulnerable JavaScript libraries</p>
+                </div>
+                
+                <div class="tool-item">
+                    <h4>Hack-Tools</h4>
+                    <p>Collection of pentesting tools in browser</p>
+                </div>
+            </div>
+                
             </div>
         </section>
         
@@ -898,7 +1106,51 @@ Strict-Transport-Security: max-age=31536000
                     <div class="quiz-result" id="q1-result"></div>
                 </div>
                 
-                <!-- Other quiz questions... -->
+            <div class="quiz-question">
+                    <h3>Question 2: What status code indicates a successful resource creation?</h3>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q2" id="q2a">
+                            <label for="q2a">200 OK</label>
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+                            <input type="radio" name="q2" id="q2b">
+                            <label for="q2b">201 Created</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q2" id="q2c">
+                            <label for="q2c">204 No Content</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q2" id="q2d">
+                            <label for="q2d">301 Moved Permanently</label>
+                        </div>
+                    </div>
+                    <div class="quiz-result" id="q2-result"></div>
+                </div>
+                
+                <div class="quiz-question">
+                    <h3>Question 3: Which header should be set to prevent clickjacking attacks?</h3>
+                    <div class="quiz-options">
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q3" id="q3a">
+                            <label for="q3a">Content-Security-Policy</label>
+                        </div>
+                        <div class="quiz-option" data-correct="true">
+                            <input type="radio" name="q3" id="q3b">
+                            <label for="q3b">X-Frame-Options</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q3" id="q3c">
+                            <label for="q3c">Strict-Transport-Security</label>
+                        </div>
+                        <div class="quiz-option" data-correct="false">
+                            <input type="radio" name="q3" id="q3d">
+                            <label for="q3d">X-Content-Type-Options</label>
+                        </div>
+                    </div>
+                    <div class="quiz-result" id="q3-result"></div>
+                </div>
                 
                 <button id="check-quiz" class="btn-success"><i class="fas fa-check-circle"></i> Check Answers</button>
                 <button id="reset-quiz" class="btn-danger"><i class="fas fa-redo"></i> Reset Quiz</button>
