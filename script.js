@@ -1,410 +1,376 @@
-// Theme toggle functionality
-const themeToggle = document.getElementById('themeToggle');
-const body = document.body;
-const themeIcon = themeToggle.querySelector('i');
+(function(){
+"use strict";
 
-// Check for saved theme preference or default to dark
-const currentTheme = localStorage.getItem('theme') || 'dark';
-body.setAttribute('data-theme', currentTheme);
-updateThemeIcon(currentTheme);
+/* ---------- Status bar date (real HTTP-date format) ---------- */
+function httpDate(d){
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function pad(n){return String(n).padStart(2,'0');}
+  return days[d.getUTCDay()]+', '+pad(d.getUTCDate())+' '+months[d.getUTCMonth()]+' '+d.getUTCFullYear()+' '+
+         pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds())+' GMT';
+}
+var sbDate=document.getElementById('sbDate');
+if(sbDate){ sbDate.textContent='Date: '+httpDate(new Date()); }
 
-themeToggle.addEventListener('click', () => {
-    const currentTheme = body.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    body.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeIcon(newTheme);
-});
-
-function updateThemeIcon(theme) {
-    if (theme === 'dark') {
-        themeIcon.className = 'fas fa-sun';
-    } else {
-        themeIcon.className = 'fas fa-moon';
-    }
+/* ---------- Reduced motion: pause SMIL wire animation ---------- */
+var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(prefersReduced){
+  var wireSvg = document.querySelector('.wire-svg');
+  if(wireSvg && typeof wireSvg.pauseAnimations === 'function'){ wireSvg.pauseAnimations(); }
 }
 
-// Network animation for header
-function createNetworkAnimation() {
-    const container = document.getElementById('networkAnimation');
-    const nodeCount = 15;
-    const nodes = [];
-    
-    // Create nodes
-    for (let i = 0; i < nodeCount; i++) {
-        const node = document.createElement('div');
-        node.className = 'node';
-        node.style.left = `${Math.random() * 100}%`;
-        node.style.top = `${Math.random() * 100}%`;
-        container.appendChild(node);
-        nodes.push({
-            element: node,
-            x: parseFloat(node.style.left),
-            y: parseFloat(node.style.top),
-            vx: (Math.random() - 0.5) * 0.2,
-            vy: (Math.random() - 0.5) * 0.2
-        });
-    }
-    
-    // Animation loop
-    function animate() {
-        nodes.forEach(node => {
-            node.x += node.vx;
-            node.y += node.vy;
-            
-            // Bounce off edges
-            if (node.x < 0 || node.x > 100) node.vx *= -1;
-            if (node.y < 0 || node.y > 100) node.vy *= -1;
-            
-            // Keep within bounds
-            node.x = Math.max(0, Math.min(100, node.x));
-            node.y = Math.max(0, Math.min(100, node.y));
-            
-            node.element.style.left = `${node.x}%`;
-            node.element.style.top = `${node.y}%`;
-        });
-        
-        requestAnimationFrame(animate);
-    }
-    
-    animate();
+/* ---------- Theme toggle (session only — no storage APIs in artifacts) ---------- */
+var body = document.body;
+var themeToggle = document.getElementById('themeToggle');
+var themeIcon = themeToggle ? themeToggle.querySelector('i') : null;
+function applyTheme(theme){
+  body.setAttribute('data-theme', theme);
+  if(themeIcon){ themeIcon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun'; }
+}
+var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+applyTheme(prefersLight ? 'light' : 'dark');
+if(themeToggle){
+  themeToggle.addEventListener('click', function(){
+    var next = body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+  });
 }
 
-// Tab functionality
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        // Remove active class from all tabs and contents
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
-        // Add active class to clicked tab
-        tab.classList.add('active');
-        
-        // Show corresponding content
-        const tabId = tab.getAttribute('data-tab');
-        document.getElementById(tabId).classList.add('active');
+/* ---------- Section nav active-state highlighting ---------- */
+var navItems = document.querySelectorAll('.section-nav-item');
+var sections = document.querySelectorAll('main section[id]');
+if('IntersectionObserver' in window && sections.length){
+  var navObserver = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        var id = entry.target.getAttribute('id');
+        navItems.forEach(function(item){
+          var link = item.querySelector('a');
+          item.classList.toggle('active', link && link.getAttribute('href') === '#'+id);
+        });
+      }
     });
+  }, { root:null, rootMargin:'-20% 0px -70% 0px', threshold:0 });
+  sections.forEach(function(s){ navObserver.observe(s); });
+}
+document.querySelectorAll('.section-nav-list a').forEach(function(link){
+  link.addEventListener('click', function(e){
+    e.preventDefault();
+    var target = document.querySelector(link.getAttribute('href'));
+    if(target){ target.scrollIntoView({behavior:'smooth', block:'start'}); }
+  });
 });
 
-// Show/hide request body based on method
-const httpMethod = document.getElementById('http-method');
+/* ---------- Tabs (scoped per data-tabgroup, click + arrow keys) ---------- */
+document.querySelectorAll('[data-tabgroup]').forEach(function(group){
+  var tabs = Array.prototype.slice.call(group.querySelectorAll('.tab'));
+  function activate(tab){
+    tabs.forEach(function(t){ t.setAttribute('aria-selected','false'); });
+    group.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+    tab.setAttribute('aria-selected','true');
+    var panel = document.getElementById(tab.getAttribute('aria-controls'));
+    if(panel){ panel.classList.add('active'); }
+    tab.focus();
+  }
+  tabs.forEach(function(tab, i){
+    tab.addEventListener('click', function(){ activate(tab); });
+    tab.addEventListener('keydown', function(e){
+      if(e.key === 'ArrowRight'){ e.preventDefault(); activate(tabs[(i+1)%tabs.length]); }
+      if(e.key === 'ArrowLeft'){ e.preventDefault(); activate(tabs[(i-1+tabs.length)%tabs.length]); }
+    });
+  });
+});
 
-function toggleRequestBody() {
-    const requestBodyContainer = document.getElementById('request-body-container');
-    if (httpMethod.value === 'POST' || httpMethod.value === 'PUT' || httpMethod.value === 'PATCH') {
-        requestBodyContainer.style.display = 'block';
+/* ---------- Collapsibles ---------- */
+document.querySelectorAll('.collapsible').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var expanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!expanded));
+    var panel = document.getElementById(btn.getAttribute('aria-controls'));
+    if(!panel) return;
+    panel.style.maxHeight = expanded ? null : (panel.scrollHeight + 'px');
+  });
+});
+
+/* ---------- Copy buttons ---------- */
+document.querySelectorAll('.copy-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var targetId = btn.getAttribute('data-copy-target');
+    var el = targetId ? document.getElementById(targetId) : null;
+    var text = el ? el.textContent : '';
+    var restore = function(label){ setTimeout(function(){ btn.textContent = 'Copy'; }, 1400); btn.textContent = label; };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ restore('Copied!'); }).catch(function(){ restore('Error'); });
     } else {
-        requestBodyContainer.style.display = 'none';
+      restore('Error');
     }
+  });
+});
+
+/* ---------- Stats (computed from the actual DOM, not hardcoded) ---------- */
+function setStat(id, selector){
+  var el = document.getElementById(id);
+  if(el){ el.textContent = document.querySelectorAll(selector).length; }
+}
+setStat('statVulns', '.vuln-card');
+setStat('statStatus', '.status-row');
+setStat('statTools', '.tool-card');
+
+/* ---------- Checklist progress ---------- */
+var checklistBoxes = Array.prototype.slice.call(document.querySelectorAll('#checklist input[type="checkbox"]'));
+var checklistFill = document.getElementById('checklistProgress');
+var checklistLabel = document.getElementById('checklistLabel');
+function updateChecklist(){
+  var checked = checklistBoxes.filter(function(b){ return b.checked; }).length;
+  var pct = checklistBoxes.length ? (checked / checklistBoxes.length * 100) : 0;
+  if(checklistFill){ checklistFill.style.width = pct + '%'; }
+  if(checklistLabel){ checklistLabel.textContent = checked + ' / ' + checklistBoxes.length + ' checked'; }
+}
+checklistBoxes.forEach(function(b){ b.addEventListener('change', updateChecklist); });
+updateChecklist();
+
+/* ---------- Vulnerability search + filter ---------- */
+var vulnSearch = document.getElementById('vulnSearch');
+var vulnFilters = document.getElementById('vulnFilters');
+var vulnCards = Array.prototype.slice.call(document.querySelectorAll('.vuln-card'));
+var vulnEmpty = document.getElementById('vulnEmpty');
+var activeFilter = 'all';
+function applyVulnFilters(){
+  var q = (vulnSearch && vulnSearch.value || '').trim().toLowerCase();
+  var visibleCount = 0;
+  vulnCards.forEach(function(card){
+    var tagMatch = activeFilter === 'all' || card.getAttribute('data-tags') === activeFilter;
+    var haystack = (card.getAttribute('data-search') || '') + ' ' + card.textContent.toLowerCase();
+    var textMatch = !q || haystack.toLowerCase().indexOf(q) !== -1;
+    var show = tagMatch && textMatch;
+    card.style.display = show ? '' : 'none';
+    if(show){ visibleCount++; }
+  });
+  if(vulnEmpty){ vulnEmpty.style.display = visibleCount ? 'none' : 'block'; }
+}
+if(vulnSearch){ vulnSearch.addEventListener('input', applyVulnFilters); }
+if(vulnFilters){
+  vulnFilters.querySelectorAll('.filter-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      vulnFilters.querySelectorAll('.filter-chip').forEach(function(c){ c.setAttribute('aria-pressed','false'); });
+      chip.setAttribute('aria-pressed','true');
+      activeFilter = chip.getAttribute('data-filter');
+      applyVulnFilters();
+    });
+  });
 }
 
-httpMethod.addEventListener('change', toggleRequestBody);
+/* ---------- Live request console ---------- */
+(function(){
+  var methodSel = document.getElementById('httpMethod');
+  var urlInput = document.getElementById('requestUrl');
+  var headersInput = document.getElementById('requestHeaders');
+  var bodyInput = document.getElementById('requestBody');
+  var bodyField = document.getElementById('requestBodyField');
+  var sendBtn = document.getElementById('sendRequest');
+  var resetBtn = document.getElementById('resetConsole');
+  var progress = document.getElementById('consoleProgress');
+  var requestView = document.getElementById('requestView');
+  var responseView = document.getElementById('responseView');
+  var statusChip = document.getElementById('responseStatusChip');
+  var timingEl = document.getElementById('responseTiming');
+  var historyRow = document.getElementById('historyRow');
+  var statReqs = document.getElementById('statReqs');
+  if(!sendBtn) return;
 
-// Interactive demo
-document.getElementById('send-request').addEventListener('click', async () => {
-    const method = document.getElementById('http-method').value;
-    const url = document.getElementById('request-url').value;
-    const headersText = document.getElementById('request-headers').value;
-    const bodyText = document.getElementById('request-body').value;
-    const progressBar = document.getElementById('request-progress');
-    
-    // Validate URL
-    if (!url) {
-        alert('Please enter a URL');
+  var BODY_METHODS = ['POST','PUT','PATCH'];
+  var requestCount = 0;
+  var history = [];
+
+  function toggleBodyField(){
+    var show = BODY_METHODS.indexOf(methodSel.value) !== -1;
+    bodyField.style.display = show ? 'block' : 'none';
+  }
+  methodSel.addEventListener('change', toggleBodyField);
+  toggleBodyField();
+
+  document.querySelectorAll('.preset-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      methodSel.value = chip.getAttribute('data-preset-method') || 'GET';
+      urlInput.value = chip.getAttribute('data-preset-url') || '';
+      bodyInput.value = chip.getAttribute('data-preset-body') || '';
+      headersInput.value = '';
+      toggleBodyField();
+    });
+  });
+
+  function statusClass(code){
+    if(code >= 200 && code < 300) return 'c2';
+    if(code >= 300 && code < 400) return 'c3';
+    if(code >= 400 && code < 500) return 'c4';
+    return 'c5';
+  }
+
+  function renderHistory(){
+    historyRow.textContent = '';
+    history.slice(0,6).forEach(function(entry){
+      var chip = document.createElement('span');
+      chip.className = 'history-chip';
+      chip.textContent = entry.method + ' ' + entry.short;
+      chip.addEventListener('click', function(){
+        methodSel.value = entry.method;
+        urlInput.value = entry.url;
+        toggleBodyField();
+      });
+      historyRow.appendChild(chip);
+    });
+  }
+
+  sendBtn.addEventListener('click', function(){
+    var method = methodSel.value;
+    var url = urlInput.value.trim();
+    if(!url){ urlInput.focus(); return; }
+
+    var headers = {};
+    var headersText = headersInput.value.trim();
+    if(headersText){
+      try{ headers = JSON.parse(headersText); }
+      catch(e){
+        responseView.textContent = 'Could not parse headers as JSON: ' + e.message;
+        statusChip.textContent = 'ERR'; statusChip.className = 'status-chip c4'; timingEl.textContent = '';
         return;
+      }
     }
-    
-    try {
-        // Display request
-        let requestDisplay = `${method} ${new URL(url).pathname} HTTP/1.1\nHost: ${new URL(url).host}\n`;
-        
-        let headers = {};
-        if (headersText) {
-            try {
-                headers = JSON.parse(headersText);
-                for (const [key, value] of Object.entries(headers)) {
-                    requestDisplay += `${key}: ${value}\n`;
-                }
-            } catch (e) {
-                document.getElementById('response-view').textContent = 'Error: Invalid headers JSON';
-                return;
-            }
-        }
-        
-        if ((method === 'POST' || method === 'PUT' || method === 'PATCH') && bodyText) {
-            requestDisplay += `Content-Length: ${bodyText.length}\n`;
-            requestDisplay += `\n${bodyText}`;
-        }
-        
-        document.getElementById('request-view').textContent = requestDisplay;
-        
-        // Animate progress bar
-        progressBar.style.width = '30%';
-        
-        // Send request and display response
-        const options = {
-            method: method,
-            headers: headers
-        };
-        
-        if ((method === 'POST' || method === 'PUT' || method === 'PATCH') && bodyText) {
-            options.body = bodyText;
-        }
-        
-        progressBar.style.width = '60%';
-        
-        const response = await fetch(url, options);
-        const responseText = await response.text();
-        
-        progressBar.style.width = '90%';
-        
-        let responseDisplay = `HTTP/1.1 ${response.status} ${response.statusText}\n`;
-        
-        response.headers.forEach((value, key) => {
-            responseDisplay += `${key}: ${value}\n`;
-        });
-        
-        responseDisplay += `\n${responseText}`;
-        
-        document.getElementById('response-view').textContent = responseDisplay;
-        
-        progressBar.style.width = '100%';
-        setTimeout(() => {
-            progressBar.style.width = '0%';
-        }, 1000);
-        
-        // Update request counter
-        updateRequestCounter();
-    } catch (error) {
-        document.getElementById('response-view').textContent = `Error: ${error.message}`;
-        progressBar.style.width = '0%';
+
+    var bodyText = bodyInput.value;
+    var hasBody = BODY_METHODS.indexOf(method) !== -1 && bodyText;
+
+    var reqLines = [];
+    try{
+      var u = new URL(url);
+      reqLines.push(method + ' ' + u.pathname + u.search + ' HTTP/1.1');
+      reqLines.push('Host: ' + u.host);
+    }catch(e){
+      reqLines.push(method + ' ' + url + ' HTTP/1.1');
     }
-});
+    Object.keys(headers).forEach(function(k){ reqLines.push(k + ': ' + headers[k]); });
+    if(hasBody){
+      reqLines.push('Content-Length: ' + new TextEncoder().encode(bodyText).length);
+      reqLines.push('');
+      reqLines.push(bodyText);
+    }
+    requestView.textContent = reqLines.join('\n');
 
-// Reset demo
-document.getElementById('reset-demo').addEventListener('click', () => {
-    document.getElementById('http-method').value = 'GET';
-    document.getElementById('request-url').value = 'https://jsonplaceholder.typicode.com/posts/1';
-    document.getElementById('request-headers').value = '';
-    document.getElementById('request-body').value = '';
-    document.getElementById('request-view').textContent = '';
-    document.getElementById('response-view').textContent = '';
-    document.getElementById('request-progress').style.width = '0%';
-    toggleRequestBody();
-});
+    statusChip.textContent = '···'; statusChip.className = 'status-chip pending';
+    timingEl.textContent = '';
+    responseView.textContent = '';
+    progress.style.width = '25%';
+    sendBtn.disabled = true;
 
-// Copy code blocks
-document.querySelectorAll('.copy-btn').forEach(button => {
-    button.addEventListener('click', () => {
-        const codeBlock = button.parentElement.parentElement;
-        const text = codeBlock.innerText.replace('Copy', '').trim();
-        
-        navigator.clipboard.writeText(text).then(() => {
-            const originalText = button.textContent;
-            button.textContent = 'Copied!';
-            setTimeout(() => {
-                button.textContent = originalText;
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-        });
+    var opts = { method: method, headers: headers };
+    if(hasBody){ opts.body = bodyText; }
+
+    var start = performance.now();
+    fetch(url, opts).then(function(res){
+      progress.style.width = '70%';
+      return res.text().then(function(text){ return { res: res, text: text }; });
+    }).then(function(result){
+      var res = result.res, text = result.text;
+      var elapsed = Math.round(performance.now() - start);
+      var bytes = new TextEncoder().encode(text).length;
+      var display = text;
+      try{ display = JSON.stringify(JSON.parse(text), null, 2); }catch(e){ /* not JSON, show raw */ }
+
+      var headerLines = [];
+      res.headers.forEach(function(v,k){ headerLines.push(k + ': ' + v); });
+      var statusLine = 'HTTP/1.1 ' + res.status + ' ' + (res.statusText || '');
+      responseView.textContent = statusLine + '\n' + headerLines.join('\n') + '\n\n' + display;
+
+      statusChip.textContent = res.status + (res.statusText ? (' ' + res.statusText) : '');
+      statusChip.className = 'status-chip ' + statusClass(res.status);
+      timingEl.textContent = elapsed + 'ms · ' + bytes + ' bytes';
+
+      requestCount++;
+      if(statReqs){ statReqs.textContent = requestCount; }
+      var shortPath = url; try{ shortPath = new URL(url).pathname; }catch(e){}
+      history.unshift({ method: method, url: url, short: shortPath });
+      renderHistory();
+
+      progress.style.width = '100%';
+      setTimeout(function(){ progress.style.width = '0%'; }, 700);
+      sendBtn.disabled = false;
+    }).catch(function(err){
+      responseView.textContent = 'Request failed: ' + err.message +
+        '\n\nMost often this is CORS — the target has to explicitly allow cross-origin requests before a browser lets a page read the response. Try one of the presets above, or test this request with curl or a proxy tool instead.';
+      statusChip.textContent = 'ERR'; statusChip.className = 'status-chip c4';
+      timingEl.textContent = '';
+      progress.style.width = '0%';
+      sendBtn.disabled = false;
     });
-});
+  });
 
-// Vulnerability search
-document.getElementById('search-btn').addEventListener('click', () => {
-    const searchTerm = document.getElementById('vulnerability-search').value.toLowerCase();
-    const items = document.querySelectorAll('.vulnerability-item');
-    
-    items.forEach(item => {
-        const title = item.querySelector('.vulnerability-title').textContent.toLowerCase();
-        const content = item.textContent.toLowerCase();
-        
-        if (title.includes(searchTerm) || content.includes(searchTerm)) {
-            item.style.display = 'block';
+  resetBtn.addEventListener('click', function(){
+    methodSel.value = 'GET';
+    urlInput.value = 'https://jsonplaceholder.typicode.com/posts/1';
+    headersInput.value = '';
+    bodyInput.value = '';
+    requestView.textContent = '';
+    responseView.textContent = '';
+    statusChip.textContent = '—'; statusChip.className = 'status-chip pending';
+    timingEl.textContent = '';
+    progress.style.width = '0%';
+    toggleBodyField();
+  });
+})();
+
+/* ---------- Quiz ---------- */
+(function(){
+  var checkBtn = document.getElementById('checkQuiz');
+  var resetBtn = document.getElementById('resetQuiz');
+  var summary = document.getElementById('quizSummary');
+  var scoreEl = document.getElementById('quizScore');
+  var scoreLabel = document.getElementById('quizScoreLabel');
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.quiz-card'));
+  if(!checkBtn) return;
+
+  checkBtn.addEventListener('click', function(){
+    var score = 0;
+    cards.forEach(function(card){
+      var correctIdx = card.getAttribute('data-correct');
+      var options = Array.prototype.slice.call(card.querySelectorAll('.quiz-option'));
+      var radios = card.querySelectorAll('input[type="radio"]');
+      var selected = null;
+      radios.forEach(function(r){ if(r.checked) selected = r; });
+      options.forEach(function(o){ o.classList.remove('correct','incorrect'); });
+      var explain = card.querySelector('.quiz-explain');
+      if(explain){ explain.classList.add('show'); }
+      var correctOption = options[Number(correctIdx)];
+      if(selected){
+        var selectedOption = selected.closest('.quiz-option');
+        if(selected.value === correctIdx){
+          selectedOption.classList.add('correct');
+          score++;
         } else {
-            item.style.display = 'none';
+          selectedOption.classList.add('incorrect');
+          if(correctOption){ correctOption.classList.add('correct'); }
         }
+      } else if(correctOption){
+        correctOption.classList.add('correct');
+      }
     });
-});
+    var total = cards.length;
+    scoreEl.textContent = score + ' / ' + total;
+    scoreLabel.textContent = score === total
+      ? 'Clean sweep.'
+      : (score / total >= 0.7 ? 'Solid — check the explanations on the ones you missed.' : 'Worth another pass through the sections above.');
+    summary.classList.add('show');
+    summary.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  });
 
-// Enter key for search
-document.getElementById('vulnerability-search').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        document.getElementById('search-btn').click();
-    }
-});
-
-// Quiz functionality
-document.getElementById('check-quiz').addEventListener('click', () => {
-    let score = 0;
-    const totalQuestions = 3;
-    
-    // Check each question
-    for (let i = 1; i <= totalQuestions; i++) {
-        const options = document.querySelectorAll(`input[name="q${i}"]`);
-        let selectedOption = null;
-        
-        options.forEach(option => {
-            if (option.checked) {
-                selectedOption = option.parentElement;
-            }
-        });
-        
-        const resultElement = document.getElementById(`q${i}-result`);
-        
-        if (selectedOption) {
-            if (selectedOption.getAttribute('data-correct') === 'true') {
-                selectedOption.classList.add('correct');
-                resultElement.textContent = 'Correct!';
-                resultElement.className = 'quiz-result correct';
-                score++;
-            } else {
-                selectedOption.classList.add('incorrect');
-                resultElement.textContent = 'Incorrect. Try again.';
-                resultElement.className = 'quiz-result incorrect';
-                
-                // Highlight correct answer
-                options.forEach(option => {
-                    if (option.parentElement.getAttribute('data-correct') === 'true') {
-                        option.parentElement.classList.add('correct');
-                    }
-                });
-            }
-        } else {
-            resultElement.textContent = 'Please select an answer.';
-            resultElement.className = 'quiz-result incorrect';
-        }
-    }
-    
-    // Show final score
-    if (score === totalQuestions) {
-        alert(`Perfect! You scored ${score}/${totalQuestions}. Great job!`);
-    } else {
-        alert(`You scored ${score}/${totalQuestions}. Keep learning!`);
-    }
-});
-
-document.getElementById('reset-quiz').addEventListener('click', () => {
-    // Reset all inputs and styles
-    document.querySelectorAll('input[type="radio"]').forEach(input => {
-        input.checked = false;
+  resetBtn.addEventListener('click', function(){
+    cards.forEach(function(card){
+      card.querySelectorAll('input[type="radio"]').forEach(function(r){ r.checked = false; });
+      card.querySelectorAll('.quiz-option').forEach(function(o){ o.classList.remove('correct','incorrect'); });
+      var explain = card.querySelector('.quiz-explain');
+      if(explain){ explain.classList.remove('show'); }
     });
-    
-    document.querySelectorAll('.quiz-option').forEach(option => {
-        option.classList.remove('correct', 'incorrect');
-    });
-    
-    document.querySelectorAll('.quiz-result').forEach(result => {
-        result.textContent = '';
-        result.className = 'quiz-result';
-    });
-});
+    summary.classList.remove('show');
+  });
+})();
 
-// Section navigation
-document.querySelectorAll('.section-nav-item a').forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        
-        // Remove active class from all items
-        document.querySelectorAll('.section-nav-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Add active class to clicked item
-        link.parentElement.classList.add('active');
-        
-        // Scroll to section
-        const targetId = link.getAttribute('href').substring(1);
-        document.getElementById(targetId).scrollIntoView({
-            behavior: 'smooth'
-        });
-    });
-});
-
-// Collapsible sections
-document.querySelectorAll('.collapsible').forEach(collapsible => {
-    collapsible.addEventListener('click', function() {
-        this.classList.toggle('active-collapsible');
-        const content = this.nextElementSibling;
-        if (content.style.maxHeight) {
-            content.style.maxHeight = null;
-        } else {
-            content.style.maxHeight = content.scrollHeight + "px";
-        }
-    });
-});
-
-// Request counter
-let requestCount = 0;
-function updateRequestCounter() {
-    requestCount++;
-    document.getElementById('requestsCount').textContent = requestCount;
-}
-
-// Initialize stats
-function initializeStats() {
-    document.getElementById('vulnerabilitiesCount').textContent = '12';
-    document.getElementById('toolsCount').textContent = '15+';
-}
-
-// Smooth scrolling for anchor links
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const targetId = this.getAttribute('href');
-        if (targetId === '#') return;
-        
-        const targetElement = document.querySelector(targetId);
-        if (targetElement) {
-            targetElement.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
-});
-
-// Initialize everything when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    createNetworkAnimation();
-    toggleRequestBody();
-    initializeStats();
-    
-    // Open first collapsible by default
-    const firstCollapsible = document.querySelector('.collapsible');
-    if (firstCollapsible) {
-        firstCollapsible.classList.add('active-collapsible');
-        const content = firstCollapsible.nextElementSibling;
-        content.style.maxHeight = content.scrollHeight + "px";
-    }
-});
-
-// Add intersection observer for section navigation highlighting
-const sections = document.querySelectorAll('section[id]');
-const navItems = document.querySelectorAll('.section-nav-item');
-
-const observerOptions = {
-    root: null,
-    rootMargin: '-20% 0px -80% 0px',
-    threshold: 0
-};
-
-const sectionObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            const id = entry.target.getAttribute('id');
-            navItems.forEach(item => {
-                item.classList.remove('active');
-                if (item.querySelector('a').getAttribute('href') === `#${id}`) {
-                    item.classList.add('active');
-                }
-            });
-        }
-    });
-}, observerOptions);
-
-sections.forEach(section => {
-    sectionObserver.observe(section);
-});
+})();
