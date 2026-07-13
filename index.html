@@ -3,1166 +3,821 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete HTTP Request & Response Guide for Bug Hunters</title>
+    <title>HTTP for Bug Hunters — A Field Guide to Requests, Responses & Risk</title>
+    <meta name="description" content="A practical, interactive field guide to HTTP for security researchers: request/response anatomy, a live request console, and a vulnerability reference mapped to OWASP Top 10:2025.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body data-theme="dark">
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <div class="status-bar">
+        <div class="container">
+            <span class="sb-ok">● HTTP/1.1 200 OK</span>
+            <span class="sep">|</span>
+            <span>Content-Type: text/security-guide; charset=utf-8</span>
+            <span class="sep">|</span>
+            <span id="sbDate">Date: —</span>
+            <span class="sep">|</span>
+            <span>X-Risk-Reference: OWASP Top 10:2025</span>
+        </div>
+    </div>
+
     <header>
-        <div class="network-animation" id="networkAnimation"></div>
-        <div class="container header-content">
-            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-                <i class="fas fa-moon"></i>
-            </button>
-            <h1>Complete HTTP Guide for Bug Hunters</h1>
-            <p>Master HTTP protocols to uncover security vulnerabilities effectively</p>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle light and dark theme">
+            <i class="fas fa-moon"></i>
+        </button>
+        <div class="container hero-grid">
+            <div>
+                <div class="hero-eyebrow">GET /guide/http-for-bug-hunters HTTP/1.1<span class="cursor" aria-hidden="true"></span></div>
+                <h1>Every request tells on itself.</h1>
+                <p class="hero-sub">A practical field guide to HTTP for people who get paid to break things responsibly — how requests and responses are actually built, a live console to poke at real traffic, and a vulnerability reference mapped to the current <strong>OWASP Top 10:2025</strong>.</p>
+                <div class="hero-badges">
+                    <span class="pill on"><i class="fas fa-check"></i> Updated for OWASP Top 10:2025</span>
+                    <span class="pill"><i class="fas fa-shield-alt"></i> Authorized testing only</span>
+                </div>
+                <div class="hero-cta">
+                    <a href="#console" class="btn btn-primary"><i class="fas fa-terminal"></i> Open the console</a>
+                    <a href="#vulnerabilities" class="btn"><i class="fas fa-bug"></i> Jump to vulnerabilities</a>
+                </div>
+            </div>
+            <div class="wire-wrap">
+                <svg class="wire-svg" viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path id="wireOut" d="M40,70 C 140,20 220,20 320,70" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+                    <path id="wireBack" d="M40,150 C 140,200 220,200 320,150" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+                    <circle cx="40" cy="110" r="22" fill="var(--panel-2)" stroke="var(--line)"/>
+                    <circle cx="320" cy="110" r="22" fill="var(--panel-2)" stroke="var(--line)"/>
+                    <text x="40" y="114" text-anchor="middle" class="wire-node-label">C</text>
+                    <text x="320" y="114" text-anchor="middle" class="wire-node-label">S</text>
+                    <text x="40" y="152" text-anchor="middle" class="wire-label">CLIENT</text>
+                    <text x="320" y="152" text-anchor="middle" class="wire-label">SERVER</text>
+                    <text x="180" y="35" text-anchor="middle" class="wire-label" fill="var(--signal)">request →</text>
+                    <text x="180" y="205" text-anchor="middle" class="wire-label" fill="var(--s2xx)">← response</text>
+                    <circle r="4" fill="var(--signal)">
+                        <animateMotion dur="2.4s" repeatCount="indefinite" begin="0s">
+                            <mpath href="#wireOut"/>
+                        </animateMotion>
+                    </circle>
+                    <circle r="4" fill="var(--s2xx)">
+                        <animateMotion dur="2.4s" repeatCount="indefinite" begin="1.2s">
+                            <mpath href="#wireBack"/>
+                        </animateMotion>
+                    </circle>
+                </svg>
+            </div>
         </div>
     </header>
-    
-    <div class="section-nav">
+
+    <nav class="section-nav" aria-label="Section navigation">
         <div class="container">
             <ul class="section-nav-list">
-                <li class="section-nav-item active"><a href="#introduction">Introduction</a></li>
-                <li class="section-nav-item"><a href="#request-response-flow">Flow</a></li>
-                <li class="section-nav-item"><a href="#http-request">Request</a></li>
-                <li class="section-nav-item"><a href="#http-response">Response</a></li>
-                <li class="section-nav-item"><a href="#interactive-demo">Demo</a></li>
-                <li class="section-nav-item"><a href="#bug-hunting-tips">Vulnerabilities</a></li>
-                <li class="section-nav-item"><a href="#advanced-techniques">Advanced</a></li>
-                <li class="section-nav-item"><a href="#tools">Tools</a></li>
+                <li class="section-nav-item active"><a href="#intro">Intro</a></li>
+                <li class="section-nav-item"><a href="#transaction-flow">Flow</a></li>
+                <li class="section-nav-item"><a href="#request-anatomy">Request</a></li>
+                <li class="section-nav-item"><a href="#response-anatomy">Response</a></li>
+                <li class="section-nav-item"><a href="#console">Console</a></li>
+                <li class="section-nav-item"><a href="#vulnerabilities">Vulnerabilities</a></li>
+                <li class="section-nav-item"><a href="#advanced">Advanced</a></li>
+                <li class="section-nav-item"><a href="#checklist">Checklist</a></li>
+                <li class="section-nav-item"><a href="#toolkit">Toolkit</a></li>
+                <li class="section-nav-item"><a href="#responsible-testing">Ethics</a></li>
                 <li class="section-nav-item"><a href="#quiz">Quiz</a></li>
             </ul>
         </div>
-    </div>
-    
-    <div class="container">
-        <section id="introduction">
-            <div class="card">
-                <h2>Introduction to HTTP</h2>
-                <p>HTTP (Hypertext Transfer Protocol) is the foundation of data communication on the World Wide Web. Understanding HTTP requests and responses is crucial for bug hunters to identify security vulnerabilities in web applications.</p>
-                
-                <div class="highlight">
-                    <p><strong>Bug Hunter Tip:</strong> Most web vulnerabilities stem from improper handling of HTTP requests or insecure transmission of data. Mastering HTTP gives you a significant advantage in finding these issues.</p>
+    </nav>
+
+    <main id="main">
+        <div class="container">
+
+            <section id="intro">
+                <div class="section-head section-intro">
+                    <div class="eyebrow">Read this first</div>
+                    <h2>What this guide is for</h2>
+                    <p>HTTP is a plain-text protocol. Every field in a request or response is either doing its job correctly, or quietly telling you where the application's assumptions break down. Most web vulnerabilities are not exotic — they're a server trusting something it shouldn't, or a client sending something a server never expected. This guide walks through the protocol itself, then a live console to try it, then a reference of what to look for and where it's currently ranked in the industry's own data.</p>
                 </div>
-                
-                <h3>Why HTTP Knowledge is Critical for Bug Hunters</h3>
-                <ul>
-                    <li>Understanding how data flows helps identify injection points</li>
-                    <li>Headers often contain sensitive information or misconfigurations</li>
-                    <li>Status codes reveal application behavior and potential information leakage</li>
-                    <li>Request/response manipulation is key to testing for vulnerabilities</li>
-                </ul>
-                
-                <div class="feature-highlight">
-                    <h3>Interactive Learning Experience</h3>
-                    <p>This guide includes interactive elements, demos, and quizzes to help you master HTTP for bug hunting</p>
+                <div class="callout warn">
+                    <span class="callout-label"><i class="fas fa-triangle-exclamation"></i> Before you test anything</span>
+                    <p>Only probe applications you own, or that have explicitly authorized you through a bug bounty program or signed engagement scope. Sending crafted requests to systems without permission can be a criminal offense in most jurisdictions, regardless of intent. See <a href="#responsible-testing">Responsible testing</a> for legal scope-of-work basics and legal practice targets.</p>
                 </div>
-            </div>
-        </section>
-        
-        <section id="request-response-flow">
-            <h2>HTTP Request & Response Flow</h2>
-            
-            <div class="stats-container">
-                <div class="stat-item">
-                    <span class="stat-number" id="requestsCount">0</span>
-                    <span class="stat-label">HTTP Requests Analyzed</span>
+                <div class="stats-row">
+                    <div class="stat-card"><span class="stat-num" id="statVulns">–</span><span class="stat-label">OWASP Top 10:2025 categories mapped</span></div>
+                    <div class="stat-card"><span class="stat-num" id="statStatus">–</span><span class="stat-label">Status codes documented</span></div>
+                    <div class="stat-card"><span class="stat-num" id="statTools">–</span><span class="stat-label">Tools & extensions referenced</span></div>
+                    <div class="stat-card"><span class="stat-num" id="statReqs">0</span><span class="stat-label">Requests sent this session</span></div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number" id="vulnerabilitiesCount">12</span>
-                    <span class="stat-label">Common Vulnerabilities</span>
+            </section>
+
+            <section id="transaction-flow">
+                <div class="section-head">
+                    <div class="eyebrow">The shape of a transaction</div>
+                    <h2>Four steps, four testing points</h2>
+                    <p>Every HTTP exchange — a page load, an API call, a webhook — moves through the same four beats. Each one is a distinct place to poke.</p>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number" id="toolsCount">15+</span>
-                    <span class="stat-label">Testing Tools</span>
-                </div>
-            </div>
-            
-            <div class="request-flow">
-                <div class="flow-step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h3>Client Sends Request</h3>
-                        <p>The client (browser, tool, or script) sends an HTTP request to the server containing method, URL, headers, and optionally a body.</p>
-                        <div class="security-tip">
-                            <p><strong>Testing Point:</strong> This is where you can manipulate requests to test for vulnerabilities like SQLi, XSS, or IDOR.</p>
+                <div class="flow">
+                    <div class="flow-step">
+                        <div class="flow-num">1</div>
+                        <div class="flow-body">
+                            <h3>Client builds the request</h3>
+                            <p>A method, a path, headers, and — for most methods other than GET — a body get assembled by the browser, script, or tool making the call.</p>
+                            <span class="flow-tag"><i class="fas fa-crosshairs"></i> Every field here is attacker-controlled input</span>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-num">2</div>
+                        <div class="flow-body">
+                            <h3>Server parses and authorizes</h3>
+                            <p>The server has to decide what the request means, who's making it, and whether they're allowed to. This is where access-control logic either holds or doesn't.</p>
+                            <span class="flow-tag"><i class="fas fa-crosshairs"></i> Change IDs, roles, and content types; watch what's actually checked</span>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-num">3</div>
+                        <div class="flow-body">
+                            <h3>Server builds the response</h3>
+                            <p>Status code, headers, and a body get assembled — including whatever the application decided was safe to say, sometimes more than it meant to.</p>
+                            <span class="flow-tag"><i class="fas fa-crosshairs"></i> Error pages and headers leak stack traces, versions, and config detail</span>
+                        </div>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-num">4</div>
+                        <div class="flow-body">
+                            <h3>Client renders the response</h3>
+                            <p>HTML gets parsed, scripts get executed, JSON gets read by application code. Whatever came back is now trusted by default.</p>
+                            <span class="flow-tag"><i class="fas fa-crosshairs"></i> Unsanitized output here is how stored/reflected XSS happens</span>
                         </div>
                     </div>
                 </div>
-                
-                <div class="arrow"></div>
-                
-                <div class="flow-step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h3>Server Processes Request</h3>
-                        <p>The server interprets the request, processes it according to the application logic, and prepares a response.</p>
-                        <div class="security-tip">
-                            <p><strong>Testing Point:</strong> Pay attention to how the server handles malformed requests or unexpected input.</p>
-                        </div>
+            </section>
+
+            <section id="request-anatomy">
+                <div class="section-head">
+                    <div class="eyebrow">Anatomy · Request</div>
+                    <h2>What a request is actually made of</h2>
+                    <p>A request line, a set of headers, a blank line, and an optional body. That's the entire format — everything else is convention.</p>
+                </div>
+
+                <button class="collapsible" id="methodQuickRefBtn" aria-expanded="false" aria-controls="methodQuickRef">
+                    <span><i class="fas fa-bolt"></i>&nbsp; Quick reference: the four methods you'll use constantly</span>
+                    <i class="fas fa-chevron-down chev"></i>
+                </button>
+                <div class="collapsible-panel" id="methodQuickRef">
+                    <div class="grid" style="margin:0 0 1rem;">
+                        <div class="card"><h4><span class="badge badge-get">GET</span></h4><p>Fetch a resource. Shouldn't change server state — but plenty of real apps break this rule, which is itself worth testing.</p></div>
+                        <div class="card"><h4><span class="badge badge-post">POST</span></h4><p>Create a resource or trigger an action. Not idempotent — sending it twice can mean two effects.</p></div>
+                        <div class="card"><h4><span class="badge badge-put">PUT</span></h4><p>Replace a resource entirely with what's sent. Idempotent by definition, though implementations vary.</p></div>
+                        <div class="card"><h4><span class="badge badge-delete">DELETE</span></h4><p>Remove the target resource. High-value target for missing authorization checks.</p></div>
                     </div>
                 </div>
-                
-                <div class="arrow"></div>
-                
-                <div class="flow-step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h3>Server Sends Response</h3>
-                        <p>The server sends back an HTTP response containing status code, headers, and the requested resource or an error message.</p>
-                        <div class="security-tip">
-                            <p><strong>Testing Point:</strong> Analyze responses for information disclosure, error messages, or security header misconfigurations.</p>
-                        </div>
+
+                <div class="tab-container" data-tabgroup="req">
+                    <div class="tabs" role="tablist" aria-label="Request anatomy topics">
+                        <button class="tab" role="tab" aria-selected="true" aria-controls="req-structure" id="tab-req-structure">Structure</button>
+                        <button class="tab" role="tab" aria-selected="false" aria-controls="req-methods" id="tab-req-methods">Methods</button>
+                        <button class="tab" role="tab" aria-selected="false" aria-controls="req-headers" id="tab-req-headers">Headers</button>
+                        <button class="tab" role="tab" aria-selected="false" aria-controls="req-body" id="tab-req-body">Body</button>
+                        <button class="tab" role="tab" aria-selected="false" aria-controls="req-params" id="tab-req-params">Parameters</button>
                     </div>
-                </div>
-                
-                <div class="arrow"></div>
-                
-                <div class="flow-step">
-                    <div class="step-number">4</div>
-                    <div class="step-content">
-                        <h3>Client Processes Response</h3>
-                        <p>The client receives the response and renders the content, executes scripts, or handles the data accordingly.</p>
-                        <div class="security-tip">
-                            <p><strong>Testing Point:</strong> Check for client-side vulnerabilities like XSS, or analyze how the application handles different response types.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <section id="http-request">
-            <h2>HTTP Request Deep Dive</h2>
-            
-            <button class="collapsible">Quick Reference: HTTP Methods</button>
-            <div class="collapsible-content">
-                <div class="grid" style="margin-top: 1rem;">
-                    <div class="card">
-                        <h4><span class="method-badge method-get">GET</span> GET</h4>
-                        <p>Retrieve data from the server. Should not modify data.</p>
-                    </div>
-                    <div class="card">
-                        <h4><span class="method-badge method-post">POST</span> POST</h4>
-                        <p>Submit data to be processed. Often used for form submissions.</p>
-                    </div>
-                    <div class="card">
-                        <h4><span class="method-badge method-put">PUT</span> PUT</h4>
-                        <p>Replace target resource with uploaded content.</p>
-                    </div>
-                    <div class="card">
-                        <h4><span class="method-badge method-delete">DELETE</span> DELETE</h4>
-                        <p>Remove the target resource.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tab-container">
-                <div class="tabs">
-                    <div class="tab active" data-tab="request-structure">Structure</div>
-                    <div class="tab" data-tab="request-methods">Methods</div>
-                    <div class="tab" data-tab="request-headers">Headers</div>
-                    <div class="tab" data-tab="request-body">Body</div>
-                    <div class="tab" data-tab="request-parameters">Parameters</div>
-                </div>
-                
-                <div class="tab-content active" id="request-structure">
-                    <h3>HTTP Request Structure</h3>
-                    <p>An HTTP request consists of:</p>
-                    <ul>
-                        <li><strong>Request Line:</strong> Method, URL, and HTTP version</li>
-                        <li><strong>Headers:</strong> Additional information about the request</li>
-                        <li><strong>Empty Line:</strong> Separates headers from body</li>
-                        <li><strong>Body:</strong> Optional data sent with the request</li>
-                    </ul>
-                    
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Example HTTP Request</span>
-                            <button class="copy-btn">Copy</button>
-                        </div>
-GET /api/users/123 HTTP/1.1
+
+                    <div class="tab-panel active" id="req-structure" role="tabpanel" aria-labelledby="tab-req-structure">
+                        <h3>The four pieces</h3>
+                        <ul style="color:var(--text-dim);margin:0 0 1rem 1.2rem;">
+                            <li><strong style="color:var(--text)">Request line</strong> — method, path, HTTP version</li>
+                            <li><strong style="color:var(--text)">Headers</strong> — metadata about the request and client</li>
+                            <li><strong style="color:var(--text)">Blank line</strong> — separates headers from body</li>
+                            <li><strong style="color:var(--text)">Body</strong> — optional payload (form data, JSON, XML, binary)</li>
+                        </ul>
+                        <div class="code-block">
+                            <div class="code-head"><span>Raw request over the wire</span><button class="copy-btn" data-copy-target="raw-req-1">Copy</button></div>
+                            <pre class="code" id="raw-req-1">GET /api/users/123 HTTP/1.1
 Host: example.com
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
 Accept: application/json
-Authorization: Bearer abc123...
-Cookie: session=xyz789; user=admin
-Content-Type: application/x-www-form-urlencoded
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ...
+Cookie: session=af31c9; role=user</pre>
+                        </div>
+                        <p style="font-size:.9rem;">Every line above is something a client chose to send. Nothing in that list is verified until the server checks it — which is precisely the point.</p>
                     </div>
-                </div>
-                
-                <div class="tab-content" id="request-methods">
-                    <h3>HTTP Request Methods</h3>
-                    <div class="grid">
-                        <div class="card">
-                            <h4><span class="method-badge method-get">GET</span> GET</h4>
-                            <p>Retrieve data from the server. Should not modify data.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Parameters are visible in URL. Check for information disclosure, IDOR, and SSRF vulnerabilities.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4><span class="method-badge method-post">POST</span> POST</h4>
-                            <p>Submit data to be processed. Often used for form submissions.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Check for CSRF vulnerabilities, input validation issues, and business logic flaws.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4><span class="method-badge method-put">PUT</span> PUT</h4>
-                            <p>Replace target resource with uploaded content.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Verify proper authorization checks for resource modification and test for mass assignment.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4><span class="method-badge method-delete">DELETE</span> DELETE</h4>
-                            <p>Remove the target resource.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Critical to check authorization and implement proper access controls. Test for IDOR.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <h4>Less Common Methods</h4>
-                    <div class="grid">
-                        <div class="card">
-                            <h4>PATCH</h4>
-                            <p>Apply partial modifications to a resource.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Test for mass assignment vulnerabilities where users can update fields they shouldn't have access to.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>OPTIONS</h4>
-                            <p>Describe the communication options for the target resource.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Check for exposed HTTP methods that could be exploited.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>HEAD</h4>
-                            <p>Same as GET but without response body.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Useful for checking if a resource exists without downloading its content.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>TRACE</h4>
-                            <p>Performs a message loop-back test along the path to the target resource.</p>
-                            <div class="danger">
-                                <p><strong>Security Risk:</strong> Can be used in XST (Cross-Site Tracing) attacks. Should be disabled on production servers.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="request-headers">
-                    <h3>Common HTTP Request Headers</h3>
-                    <div class="grid">
-                        <div class="card">
-                            <h4>Authorization</h4>
-                            <p>Contains credentials for HTTP authentication.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Check for weak tokens, JWT issues, or authentication bypass. Test for token leakage.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Cookie</h4>
-                            <p>Contains stored HTTP cookies previously sent by the server.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Look for session fixation, insecure flags, or cookie manipulation vulnerabilities.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>User-Agent</h4>
-                            <p>Identifies the client software.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Can be manipulated for client-side attacks or to bypass restrictions. Check for User-Agent based SQLi.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Content-Type</h4>
-                            <p>Indicates the media type of the request body.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Content type confusion can lead to vulnerabilities like XSS or deserialization attacks.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <h4>Security-Focused Headers</h4>
-                    <div class="grid">
-                        <div class="card">
-                            <h4>X-Forwarded-For</h4>
-                            <p>Identifies the originating IP address of a client.</p>
-                            <div class="danger">
-                                <p><strong>Security Risk:</strong> Can be spoofed to bypass IP-based restrictions or logging.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Referer</h4>
-                            <p>Address of the previous web page from which a link was followed.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Check if the application properly validates referer headers for CSRF protection.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Origin</h4>
-                            <p>Indicates where a request originates from.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Test CORS misconfigurations by manipulating Origin headers.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="request-body">
-                    <h3>HTTP Request Body</h3>
-                    <p>The request body contains data sent to the server, commonly in these formats:</p>
-                    
-                    <div class="grid">
-                        <div class="card">
-                            <h4>Form Data</h4>
-                            <p>Key-value pairs, typically from HTML forms.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-username=admin&password=secret123&role=user
-                            </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Try parameter pollution (same parameter with multiple values) and check how the application handles it.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>JSON</h4>
-                            <p>Structured data in JavaScript Object Notation.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-{
-  "username": "admin",
-  "password": "secret123",
-  "role": "user"
-}
-                            </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Test for JSON injection, schema validation bypass, and mass assignment vulnerabilities.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>XML</h4>
-                            <p>Extensible Markup Language for structured data.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-&lt;user&gt;
-  &lt;username&gt;admin&lt;/username&gt;
-  &lt;password&gt;secret123&lt;/password&gt;
-  &lt;role&gt;user&lt;/role&gt;
-&lt;/user&gt;
-                            </div>
-                            <div class="danger">
-                                <p><strong>Security Risk:</strong> XML endpoints may be vulnerable to XXE (XML External Entity) attacks.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="highlight">
-                        <p><strong>Security Note:</strong> Always test different content types and parameter pollution. Many vulnerabilities arise from improper parsing of request bodies. Also test for HTTP Request Smuggling by manipulating Content-Length and Transfer-Encoding headers.</p>
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="request-parameters">
-                    <h3>Request Parameters</h3>
-                    <p>Parameters can be sent in different parts of an HTTP request:</p>
-                    
-                    <div class="grid">
-                        <div class="card">
-                            <h4>URL Parameters</h4>
-                            <p>Sent in the query string of the URL after the ? character.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-GET /search?q=test&category=books&limit=10 HTTP/1.1
-                            </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> These are visible in logs, browser history, and Referer headers. Check for sensitive data exposure.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Path Parameters</h4>
-                            <p>Sent as part of the URL path, often used in REST APIs.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-GET /api/users/123/posts/456 HTTP/1.1
-                            </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Test for IDOR (Insecure Direct Object Reference) by changing these values.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Body Parameters</h4>
-                            <p>Sent in the request body, typically with POST, PUT, or PATCH requests.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-POST /api/users HTTP/1.1
-Content-Type: application/x-www-form-urlencoded
 
-username=admin&password=secret123
+                    <div class="tab-panel" id="req-methods" role="tabpanel" aria-labelledby="tab-req-methods">
+                        <h3>Methods in depth</h3>
+                        <div class="grid">
+                            <div class="card"><h4><span class="badge badge-get">GET</span></h4><p>Retrieve data; parameters usually ride in the URL.</p><div class="callout" style="margin:0;"><p style="margin:0;font-size:.85rem;"><strong>Test for:</strong> IDOR via changed IDs, SSRF in URL-fetching parameters, sensitive data logged via query strings.</p></div></div>
+                            <div class="card"><h4><span class="badge badge-post">POST</span></h4><p>Submit data or trigger a state change.</p><div class="callout" style="margin:0;"><p style="margin:0;font-size:.85rem;"><strong>Test for:</strong> CSRF on state-changing actions, mass assignment via extra JSON fields, business-logic replay.</p></div></div>
+                            <div class="card"><h4><span class="badge badge-put">PUT</span></h4><p>Full replacement of a resource.</p><div class="callout" style="margin:0;"><p style="margin:0;font-size:.85rem;"><strong>Test for:</strong> missing ownership checks, mass assignment of fields the UI never exposes.</p></div></div>
+                            <div class="card"><h4><span class="badge badge-patch">PATCH</span></h4><p>Partial update to a resource.</p><div class="callout" style="margin:0;"><p style="margin:0;font-size:.85rem;"><strong>Test for:</strong> the same mass-assignment risk as PUT, often with weaker validation since it's implemented later.</p></div></div>
+                            <div class="card"><h4><span class="badge badge-delete">DELETE</span></h4><p>Remove a resource.</p><div class="callout" style="margin:0;"><p style="margin:0;font-size:.85rem;"><strong>Test for:</strong> authorization — can you delete something that isn't yours?</p></div></div>
+                            <div class="card"><h4>OPTIONS / HEAD / TRACE</h4><p>Introspection methods.</p><div class="callout" style="margin:0;"><p style="margin:0;font-size:.85rem;"><strong>Test for:</strong> OPTIONS reveals allowed methods; TRACE enabled on production is a red flag (Cross-Site Tracing) and should be disabled.</p></div></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel" id="req-headers" role="tabpanel" aria-labelledby="tab-req-headers">
+                        <h3>Headers worth reading twice</h3>
+                        <div class="grid">
+                            <div class="card"><h4>Authorization</h4><p>Carries the credential — Basic, Bearer token, API key.</p><p style="font-size:.85rem;">Look for tokens with no expiry, weak JWT signing, or tokens that leak into logs and Referer headers.</p></div>
+                            <div class="card"><h4>Cookie</h4><p>Session and preference state sent by the browser automatically.</p><p style="font-size:.85rem;">Check flags on the corresponding <code>Set-Cookie</code>: missing <code>Secure</code>, <code>HttpOnly</code>, or <code>SameSite</code> opens the door to theft or CSRF.</p></div>
+                            <div class="card"><h4>Content-Type</h4><p>Tells the server how to parse the body.</p><p style="font-size:.85rem;">Switching between <code>json</code>, <code>form-urlencoded</code>, and <code>xml</code> sometimes reaches an entirely different, less-validated code path.</p></div>
+                            <div class="card"><h4>X-Forwarded-For / X-Forwarded-Host</h4><p>Meant to preserve client info behind a proxy.</p><p style="font-size:.85rem;">Client-supplied and trivially spoofed — dangerous if used for IP allow-lists or password-reset link generation.</p></div>
+                            <div class="card"><h4>Origin</h4><p>Where a cross-origin request claims to come from.</p><p style="font-size:.85rem;">Servers that reflect this value back in <code>Access-Control-Allow-Origin</code> without an allow-list create a CORS hole.</p></div>
+                            <div class="card"><h4>Referer</h4><p>The page a request was linked from.</p><p style="font-size:.85rem;">Sometimes (wrongly) used as CSRF protection — worth checking whether it's actually validated server-side.</p></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel" id="req-body" role="tabpanel" aria-labelledby="tab-req-body">
+                        <h3>Body formats</h3>
+                        <div class="grid">
+                            <div class="card">
+                                <h4>Form-encoded</h4>
+                                <div class="code-block"><div class="code-head"><span>Example</span><button class="copy-btn" data-copy-target="body-form">Copy</button></div><pre class="code" id="body-form">username=admin&amp;password=hunter2&amp;role=user</pre></div>
+                                <p style="font-size:.85rem;">Try HTTP Parameter Pollution — the same key twice — and see which value the server actually uses.</p>
                             </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Test for SQL injection, XSS, and command injection in these parameters.</p>
+                            <div class="card">
+                                <h4>JSON</h4>
+                                <div class="code-block"><div class="code-head"><span>Example</span><button class="copy-btn" data-copy-target="body-json">Copy</button></div><pre class="code" id="body-json">{
+  "username": "admin",
+  "role": "user"
+}</pre></div>
+                                <p style="font-size:.85rem;">Add fields the API never documented (<code>"role": "admin"</code>) — mass assignment happens when the server trusts the whole object.</p>
+                            </div>
+                            <div class="card">
+                                <h4>XML</h4>
+                                <div class="code-block"><div class="code-head"><span>Example</span><button class="copy-btn" data-copy-target="body-xml">Copy</button></div><pre class="code" id="body-xml">&lt;user&gt;
+  &lt;username&gt;admin&lt;/username&gt;
+  &lt;role&gt;user&lt;/role&gt;
+&lt;/user&gt;</pre></div>
+                                <div class="callout danger" style="margin-top:.6rem;"><p style="margin:0;font-size:.85rem;">XML parsers that resolve external entities are vulnerable to XXE — potentially reading local files or reaching internal services.</p></div>
                             </div>
                         </div>
-                        
-                        <div class="card">
-                            <h4>Header Parameters</h4>
-                            <p>Sent as HTTP headers, often used for authentication or metadata.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-X-API-Key: 12345abcde
-                            </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Check for hardcoded keys, weak JWT implementations, and header injection vulnerabilities.</p>
-                            </div>
+                        <div class="callout" style="margin-top:1.5rem;">
+                            <span class="callout-label">Also test</span>
+                            <p style="margin:0;">Conflicting <code>Content-Length</code> and <code>Transfer-Encoding</code> headers between a front-end proxy and back-end server — the root cause of HTTP request smuggling. More in <a href="#advanced">Advanced techniques</a>.</p>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel" id="req-params" role="tabpanel" aria-labelledby="tab-req-params">
+                        <h3>Where parameters travel</h3>
+                        <div class="grid">
+                            <div class="card"><h4>URL / query string</h4><div class="code-block"><pre class="code">GET /search?q=test&amp;category=books&amp;limit=10</pre></div><p style="font-size:.85rem;">Visible in browser history, server logs, and the Referer header sent to any linked third party — never a safe place for secrets.</p></div>
+                            <div class="card"><h4>Path segments</h4><div class="code-block"><pre class="code">GET /api/users/123/orders/456</pre></div><p style="font-size:.85rem;">The classic IDOR surface — increment, decrement, or swap the ID and see whose data comes back.</p></div>
+                            <div class="card"><h4>Body parameters</h4><div class="code-block"><pre class="code">POST /api/users
+Content-Type: application/json
+
+{"username":"admin"}</pre></div><p style="font-size:.85rem;">Where most injection testing happens — SQL, command, template, and NoSQL contexts all vary by field.</p></div>
+                            <div class="card"><h4>Header parameters</h4><div class="code-block"><pre class="code">X-API-Key: 12345abcde</pre></div><p style="font-size:.85rem;">Custom headers are easy to forget when reviewing input validation — they're still attacker-controlled input.</p></div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
-        
-        <section id="http-response">
-            <h2>HTTP Response Deep Dive</h2>
-            
-            <div class="tab-container">
-                <div class="tabs">
-                    <div class="tab active" data-tab="response-structure">Structure</div>
-                    <div class="tab" data-tab="status-codes">Status Codes</div>
-                    <div class="tab" data-tab="response-headers">Headers</div>
-                    <div class="tab" data-tab="response-body">Body</div>
+            </section>
+
+            <section id="response-anatomy">
+                <div class="section-head">
+                    <div class="eyebrow">Anatomy · Response</div>
+                    <h2>What the server sends back</h2>
+                    <p>Status line, headers, blank line, body — the mirror image of a request, and just as worth reading in full.</p>
                 </div>
-                
-                <div class="tab-content active" id="response-structure">
-                    <h3>HTTP Response Structure</h3>
-                    <p>An HTTP response consists of:</p>
-                    <ul>
-                        <li><strong>Status Line:</strong> HTTP version, status code, and status text</li>
-                        <li><strong>Headers:</strong> Metadata about the response</li>
-                        <li><strong>Empty Line:</strong> Separates headers from body</li>
-                        <li><strong>Body:</strong> The requested resource or message</li>
-                    </ul>
-                    
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>Example HTTP Response</span>
-                            <button class="copy-btn">Copy</button>
-                        </div>
-HTTP/1.1 200 OK
+
+                <div class="tab-container" data-tabgroup="resp">
+                    <div class="tabs" role="tablist" aria-label="Response anatomy topics">
+                        <button class="tab" role="tab" aria-selected="true" aria-controls="resp-structure" id="tab-resp-structure">Structure</button>
+                        <button class="tab" role="tab" aria-selected="false" aria-controls="resp-status" id="tab-resp-status">Status codes</button>
+                        <button class="tab" role="tab" aria-selected="false" aria-controls="resp-headers" id="tab-resp-headers">Headers</button>
+                        <button class="tab" role="tab" aria-selected="false" aria-controls="resp-body" id="tab-resp-body">Body</button>
+                    </div>
+
+                    <div class="tab-panel active" id="resp-structure" role="tabpanel" aria-labelledby="tab-resp-structure">
+                        <div class="code-block">
+                            <div class="code-head"><span>Raw response over the wire</span><button class="copy-btn" data-copy-target="raw-resp-1">Copy</button></div>
+                            <pre class="code" id="raw-resp-1">HTTP/1.1 200 OK
 Content-Type: application/json
-Content-Length: 45
-Set-Cookie: session=abc123; Secure; HttpOnly
-X-Frame-Options: DENY
+Content-Length: 47
+Set-Cookie: session=af31c9; Secure; HttpOnly; SameSite=Lax
+X-Content-Type-Options: nosniff
 Strict-Transport-Security: max-age=31536000
 
-{"status": "success", "data": "user info"}
+{"status":"success","data":{"id":123}}</pre>
+                        </div>
+                        <p style="font-size:.9rem;">Read the headers before the body. Half of what a response gives away is metadata the developer never meant to expose.</p>
+                    </div>
+
+                    <div class="tab-panel" id="resp-status" role="tabpanel" aria-labelledby="tab-resp-status">
+                        <h3>Status codes, by class</h3>
+                        <div class="status-table" id="statusTable">
+                            <div class="status-row c1"><span class="status-code">100 Continue</span><p class="status-meaning">Client should proceed with sending the body.</p><p class="status-angle">Rarely security-relevant, but confirms the server negotiates in stages — useful when profiling proxies.</p></div>
+                            <div class="status-row c1"><span class="status-code">101 Switching Protocols</span><p class="status-meaning">Upgrading, typically to WebSocket.</p><p class="status-angle">Check whether the upgraded WebSocket channel re-applies the same auth as the REST API.</p></div>
+                            <div class="status-row c2"><span class="status-code">200 OK</span><p class="status-meaning">Standard success.</p><p class="status-angle">Compare 200 vs. 403 timing/body across privilege levels — inconsistent handling often signals an access-control gap.</p></div>
+                            <div class="status-row c2"><span class="status-code">201 Created</span><p class="status-meaning">A new resource now exists.</p><p class="status-angle">Confirm the created object actually enforces ownership — creation endpoints are often less guarded than reads.</p></div>
+                            <div class="status-row c2"><span class="status-code">202 Accepted</span><p class="status-meaning">Queued for async processing.</p><p class="status-angle">Race conditions live here — the request "succeeded" before validation actually ran.</p></div>
+                            <div class="status-row c2"><span class="status-code">204 No Content</span><p class="status-meaning">Success, empty body.</p><p class="status-angle">Still check headers — a 204 can leak just as much via <code>Set-Cookie</code> or CORS headers as a 200 with a body.</p></div>
+                            <div class="status-row c3"><span class="status-code">301 Moved Permanently</span><p class="status-meaning">Resource lives at a new URL, cache it.</p><p class="status-angle">User-controlled redirect targets are the open-redirect testing surface.</p></div>
+                            <div class="status-row c3"><span class="status-code">302 Found</span><p class="status-meaning">Temporary redirect.</p><p class="status-angle">Same open-redirect risk; also check whether auth headers are re-sent to the new host.</p></div>
+                            <div class="status-row c3"><span class="status-code">304 Not Modified</span><p class="status-meaning">Cached copy is still valid.</p><p class="status-angle">Confirm cache keys include the auth context — shared caches have leaked private responses this way.</p></div>
+                            <div class="status-row c3"><span class="status-code">307 / 308 Redirect</span><p class="status-meaning">Like 302/301, but the method and body must be preserved.</p><p class="status-angle">A POST that gets silently redirected cross-origin can leak a body an app author never expected to travel.</p></div>
+                            <div class="status-row c4"><span class="status-code">400 Bad Request</span><p class="status-meaning">Malformed request.</p><p class="status-angle">Read the error text — frameworks often echo back internal validation logic or field names here.</p></div>
+                            <div class="status-row c4"><span class="status-code">401 Unauthorized</span><p class="status-meaning">No valid credentials.</p><p class="status-angle">Check whether the message differs for "wrong password" vs. "unknown user" — that gap enables user enumeration.</p></div>
+                            <div class="status-row c4"><span class="status-code">403 Forbidden</span><p class="status-meaning">Understood, but refused.</p><p class="status-angle">Try alternate methods, trailing slashes, or case changes on the path — inconsistent routing has bypassed 403s before.</p></div>
+                            <div class="status-row c4"><span class="status-code">404 Not Found</span><p class="status-meaning">Nothing there.</p><p class="status-angle">A 404 on a private object versus a 403 on a private object you don't own can itself confirm the object exists.</p></div>
+                            <div class="status-row c4"><span class="status-code">405 Method Not Allowed</span><p class="status-meaning">Wrong verb for this path.</p><p class="status-angle">Enumerate methods with OPTIONS to see what a route actually accepts beyond the documented one.</p></div>
+                            <div class="status-row c4"><span class="status-code">409 Conflict</span><p class="status-meaning">Request conflicts with current state.</p><p class="status-angle">Good signal for race-condition hunting — see who gets the conflict when two requests land at once.</p></div>
+                            <div class="status-row c4"><span class="status-code">422 Unprocessable Entity</span><p class="status-meaning">Understood, but semantically invalid.</p><p class="status-angle">Detailed validation errors here are a common source of internal schema disclosure.</p></div>
+                            <div class="status-row c4"><span class="status-code">429 Too Many Requests</span><p class="status-meaning">Rate limit hit.</p><p class="status-angle">Confirm the limit is keyed on something you can't trivially rotate (IP alone is rarely enough).</p></div>
+                            <div class="status-row c5"><span class="status-code">500 Internal Server Error</span><p class="status-meaning">Unhandled failure.</p><p class="status-angle">Stack traces here are a goldmine — framework version, file paths, sometimes query text.</p></div>
+                            <div class="status-row c5"><span class="status-code">502 Bad Gateway</span><p class="status-meaning">Upstream server gave an invalid response.</p><p class="status-angle">Can indicate a request-smuggling attempt confused the proxy chain.</p></div>
+                            <div class="status-row c5"><span class="status-code">503 Service Unavailable</span><p class="status-meaning">Temporarily overloaded or down.</p><p class="status-angle">Worth noting if it appears right after a load or race-condition test — a sign you found a resource-exhaustion path.</p></div>
+                            <div class="status-row c5"><span class="status-code">504 Gateway Timeout</span><p class="status-meaning">Upstream didn't respond in time.</p><p class="status-angle">A timing oracle — different delays for valid vs. invalid input can leak information even with an identical status code.</p></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel" id="resp-headers" role="tabpanel" aria-labelledby="tab-resp-headers">
+                        <h3>Response headers that carry security weight</h3>
+                        <div class="grid">
+                            <div class="card"><h4>Set-Cookie</h4><p style="font-size:.85rem;">Missing <code>Secure</code>, <code>HttpOnly</code>, or <code>SameSite</code> opens the door to interception, script-read theft, or cross-site request forgery respectively.</p></div>
+                            <div class="card"><h4>Content-Security-Policy</h4><p style="font-size:.85rem;">The real modern defense against XSS. Look for <code>unsafe-inline</code>, <code>unsafe-eval</code>, or overly broad host allow-lists that weaken it back down.</p></div>
+                            <div class="card"><h4>Strict-Transport-Security</h4><p style="font-size:.85rem;">Forces HTTPS for future visits. Missing it allows a downgrade attack on the very first request.</p></div>
+                            <div class="card"><h4>X-Content-Type-Options</h4><p style="font-size:.85rem;">Should be <code>nosniff</code>. Without it, a browser may execute a file as a different type than declared.</p></div>
+                            <div class="card"><h4>Permissions-Policy</h4><p style="font-size:.85rem;">Restricts browser features (camera, geolocation, etc.) per origin. It replaced the older, now-deprecated <code>Feature-Policy</code> header.</p></div>
+                            <div class="card"><h4>Access-Control-Allow-Origin / -Credentials</h4><p style="font-size:.85rem;">The CORS pair. Reflecting an arbitrary <code>Origin</code> while <code>Allow-Credentials</code> is <code>true</code> lets any site read authenticated responses.</p></div>
+                        </div>
+                        <div class="callout" style="margin-top:1.25rem;"><span class="callout-label">Worth knowing</span><p style="margin:0;"><code>X-Frame-Options</code> still works, but <code>Content-Security-Policy: frame-ancestors</code> is the modern replacement and takes precedence in browsers that support both. <code>X-XSS-Protection</code> is deprecated and ignored by current major browsers — a CSP does that job now.</p></div>
+                    </div>
+
+                    <div class="tab-panel" id="resp-body" role="tabpanel" aria-labelledby="tab-resp-body">
+                        <h3>Body formats</h3>
+                        <div class="grid">
+                            <div class="card"><h4>HTML</h4><p style="font-size:.85rem;">Check rendered comments, inline scripts, and hidden form fields — data meant for developers sometimes ships to production.</p></div>
+                            <div class="card"><h4>JSON</h4><p style="font-size:.85rem;">The most common API format. Compare full responses across roles — over-fetching (returning fields the UI just hides) is extremely common.</p></div>
+                            <div class="card"><h4>XML / SOAP</h4><p style="font-size:.85rem;">Older systems especially. Same XXE risk as request bodies, mirrored on the way back.</p></div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="tab-content" id="status-codes">
-                    <h3>HTTP Status Codes</h3>
-                    <div class="status-code-grid">
-                        <div class="status-code-item success">
-                            <div class="status-code">200 OK</div>
-                            <p>Standard successful response.</p>
-                            <div class="security-tip">
-                                <p>Check for sensitive data in successful responses.</p>
-                            </div>
+            </section>
+
+            <section id="console">
+                <div class="section-head">
+                    <div class="eyebrow">Try it · Live console</div>
+                    <h2>Send a real request</h2>
+                    <p>This runs an actual <code>fetch()</code> from your browser — the same-origin policy and CORS still apply, so it works best against APIs that allow cross-origin calls. Use the presets below, or point it at an app you're authorized to test.</p>
+                </div>
+
+                <div class="console">
+                    <div class="preset-row">
+                        <span class="preset-chip" data-preset-url="https://jsonplaceholder.typicode.com/posts/1" data-preset-method="GET">jsonplaceholder · GET post</span>
+                        <span class="preset-chip" data-preset-url="https://jsonplaceholder.typicode.com/posts" data-preset-method="POST" data-preset-body='{"title":"test","body":"hello","userId":1}'>jsonplaceholder · POST</span>
+                        <span class="preset-chip" data-preset-url="https://httpbin.org/headers" data-preset-method="GET">httpbin · echo headers</span>
+                        <span class="preset-chip" data-preset-url="https://httpbin.org/status/429" data-preset-method="GET">httpbin · force 429</span>
+                        <span class="preset-chip" data-preset-url="https://httpbin.org/redirect/2" data-preset-method="GET">httpbin · redirect chain</span>
+                    </div>
+
+                    <div class="console-row">
+                        <div style="flex:0 0 120px;">
+                            <label class="field-label" for="httpMethod">Method</label>
+                            <select id="httpMethod">
+                                <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>HEAD</option><option>OPTIONS</option>
+                            </select>
                         </div>
-                        
-                        <div class="status-code-item success">
-                            <div class="status-code">201 Created</div>
-                            <p>Resource created successfully.</p>
-                            <div class="security-tip">
-                                <p>Verify the created resource has proper access controls.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item success">
-                            <div class="status-code">204 No Content</div>
-                            <p>Success but no content to return.</p>
-                            <div class="security-tip">
-                                <p>Even with no content, check headers for information leakage.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item redirect">
-                            <div class="status-code">301 Moved Permanently</div>
-                            <p>Resource has a new permanent URL.</p>
-                            <div class="security-tip">
-                                <p>Check if redirects can be exploited for open redirect vulnerabilities.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item redirect">
-                            <div class="status-code">302 Found</div>
-                            <p>Temporary redirection.</p>
-                            <div class="security-tip">
-                                <p>Test for open redirects by manipulating the Location header.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item client-error">
-                            <div class="status-code">400 Bad Request</div>
-                            <p>Malformed request.</p>
-                            <div class="security-tip">
-                                <p>Error messages might reveal application details or vulnerabilities.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item client-error">
-                            <div class="status-code">401 Unauthorized</div>
-                            <p>Authentication required.</p>
-                            <div class="security-tip">
-                                <p>Check for authentication bypass techniques.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item client-error">
-                            <div class="status-code">403 Forbidden</div>
-                            <p>Server refuses to respond.</p>
-                            <div class="security-tip">
-                                <p>Try different HTTP methods or paths to bypass restrictions.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item client-error">
-                            <div class="status-code">404 Not Found</div>
-                            <p>Resource not found.</p>
-                            <div class="security-tip">
-                                <p>Check for information disclosure in error messages.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item server-error">
-                            <div class="status-code">500 Internal Server Error</div>
-                            <p>Generic server error.</p>
-                            <div class="security-tip">
-                                <p>Error messages might reveal backend technology or configuration details.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item server-error">
-                            <div class="status-code">502 Bad Gateway</div>
-                            <p>Invalid response from upstream server.</p>
-                            <div class="security-tip">
-                                <p>Could indicate infrastructure issues or misconfigurations.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="status-code-item server-error">
-                            <div class="status-code">503 Service Unavailable</div>
-                            <p>Server temporarily unavailable.</p>
-                            <div class="security-tip">
-                                <p>Might be caused by resource exhaustion attacks.</p>
-                            </div>
+                        <div style="flex:1;min-width:220px;">
+                            <label class="field-label" for="requestUrl">URL</label>
+                            <input type="text" id="requestUrl" value="https://jsonplaceholder.typicode.com/posts/1">
                         </div>
                     </div>
-                    
-                    <div class="highlight">
-                        <p><strong>Bug Hunter Tip:</strong> Pay close attention to error responses. They often reveal information about the application structure, technologies used, or potential attack vectors. Also test how the application handles unexpected status codes.</p>
+
+                    <div class="console-field">
+                        <label class="field-label" for="requestHeaders">Headers (JSON object)</label>
+                        <textarea id="requestHeaders" rows="2" placeholder='{"Accept": "application/json"}'></textarea>
+                    </div>
+
+                    <div class="console-field" id="requestBodyField">
+                        <label class="field-label" for="requestBody">Body</label>
+                        <textarea id="requestBody" rows="4" placeholder='{"title":"test"}'></textarea>
+                    </div>
+
+                    <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
+                        <button class="btn btn-primary" id="sendRequest"><i class="fas fa-paper-plane"></i> Send</button>
+                        <button class="btn btn-danger" id="resetConsole"><i class="fas fa-rotate-left"></i> Reset</button>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" id="consoleProgress"></div></div>
+
+                    <div class="console-panels">
+                        <div class="panel-block">
+                            <div class="panel-head"><span>Request</span></div>
+                            <pre class="panel-body" id="requestView"></pre>
+                        </div>
+                        <div class="panel-block">
+                            <div class="panel-head">
+                                <span>Response</span>
+                                <span class="meta"><span class="status-chip pending" id="responseStatusChip">—</span><span id="responseTiming" style="color:var(--text-faint);"></span></span>
+                            </div>
+                            <pre class="panel-body" id="responseView"></pre>
+                        </div>
+                    </div>
+                    <div class="history-row" id="historyRow"></div>
+                </div>
+            </section>
+
+            <section id="vulnerabilities">
+                <div class="section-head">
+                    <div class="eyebrow">Reference · Risk categories</div>
+                    <h2>OWASP Top 10:2025, translated into HTTP terms</h2>
+                    <p>OWASP published the first major revision of the Top 10 since 2021 in November 2025 — plenty of guides you'll find still teach the outdated ranking. Two categories are new, one was folded into another, and the order shifted meaningfully. This maps each current category to what it actually looks like on the wire.</p>
+                </div>
+
+                <div class="vuln-controls">
+                    <input type="text" class="vuln-search" id="vulnSearch" placeholder="Search risks — try 'token', 'cors', 'cache'…">
+                </div>
+                <div class="vuln-filters" id="vulnFilters">
+                    <button class="filter-chip" aria-pressed="true" data-filter="all">All</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="access">Access control</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="config">Configuration</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="supply">Supply chain</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="crypto">Cryptography</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="injection">Injection</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="design">Design</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="auth">Authentication</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="integrity">Integrity</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="logging">Logging</button>
+                    <button class="filter-chip" aria-pressed="false" data-filter="errors">Error handling</button>
+                </div>
+
+                <div class="grid" id="vulnList">
+
+                    <div class="card vuln-card" data-tags="access" data-search="broken access control bola bfla ssrf idor authorization">
+                        <div class="vuln-title"><span class="vuln-rank">A01</span><h3>Broken Access Control</h3></div>
+                        <p>The server fails to enforce what a given user is actually allowed to do or see. Holds the #1 spot for the fourth edition running, and in 2025 it absorbed Server-Side Request Forgery (SSRF), which used to be its own category.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>Swap an object ID and get someone else's data back (BOLA); reach an admin route as a normal user (BFLA); a URL-fetch feature that can be pointed at internal infrastructure (SSRF).</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Replay the same request as a lower-privileged account; walk through object IDs sequentially; test any "fetch a URL" feature against internal-looking hosts, only within an authorized scope.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">Burp Autorize</span><span class="tool-tag">Auth Analyzer</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="config" data-search="security misconfiguration headers default credentials cloud storage buckets">
+                        <div class="vuln-title"><span class="vuln-rank">A02</span><h3>Security Misconfiguration</h3></div>
+                        <p>The stack — server, framework, cloud storage, containers, security headers — is left in an insecure default or half-hardened state. The single biggest mover in 2025, climbing from #5 to #2.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>Verbose stack traces on error, exposed admin panels, open cloud storage, missing security headers, default credentials still enabled.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Request malformed input and nonexistent resources to see what leaks; check for directory listing and exposed <code>.git</code>/<code>.env</code> files; run a header scan.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">Nuclei</span><span class="tool-tag">Nikto</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="supply" data-search="software supply chain failures dependencies packages vulnerable outdated components">
+                        <div class="vuln-title"><span class="vuln-rank">A03</span><h3>Software Supply Chain Failures</h3></div>
+                        <p>New in 2025 — a broader replacement for 2021's "Vulnerable and Outdated Components." Covers compromised dependencies, malicious package updates, and weak build/distribution pipelines, not just an unpatched library.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>A page pulling a tampered third-party script with no integrity check; a backend dependency with a known CVE still in production.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Inventory client and server dependencies against known CVEs; check for Subresource Integrity on third-party <code>&lt;script&gt;</code> tags; review what a CI/CD pipeline trusts by default.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">npm audit</span><span class="tool-tag">pip-audit</span><span class="tool-tag">Dependency-Track</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="crypto" data-search="cryptographic failures tls encryption sensitive data exposure tokens">
+                        <div class="vuln-title"><span class="vuln-rank">A04</span><h3>Cryptographic Failures</h3></div>
+                        <p>Sensitive data moves or rests without adequate protection — weak or absent TLS, home-grown crypto, predictable tokens, secrets sitting in plaintext.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>HTTP still reachable alongside HTTPS, mixed content, session tokens with visible patterns, sensitive fields riding in a URL.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Check for HTTP fallback and mixed content; inspect the TLS configuration; look at how session tokens are generated for predictability.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">testssl.sh</span><span class="tool-tag">SSL Labs</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="injection" data-search="injection sql xss command nosql template ldap">
+                        <div class="vuln-title"><span class="vuln-rank">A05</span><h3>Injection</h3></div>
+                        <p>Untrusted input reaches an interpreter — SQL, shell, LDAP, a template engine, NoSQL — as part of a command instead of pure data. Ranked lower than in 2021, but still one of the most commonly exploited categories in practice.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>A parameter that changes server behavior when you add a quote or boolean logic; a search field that leaks a database error verbatim.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Supply syntactically meaningful characters for the context into every input and watch for behavior changes, timing differences, or verbose errors — inside an authorized scope only.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">sqlmap</span><span class="tool-tag">Burp Intruder</span><span class="tool-tag">ffuf</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="design" data-search="insecure design business logic threat modeling workflow">
+                        <div class="vuln-title"><span class="vuln-rank">A06</span><h3>Insecure Design</h3></div>
+                        <p>The flaw lives in the architecture or business logic itself, not a single coding mistake — missing threat modeling, or trusting the client to enforce rules only the server should enforce.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>Pricing or discount logic manipulated by replaying requests out of order; a checkout flow with no server-side re-validation of quantity or currency.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Map the intended workflow, then try skipping steps, replaying requests out of sequence, or altering client-controlled values a well-designed server should re-check.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">Manual review</span><span class="tool-tag">Burp Repeater</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="auth" data-search="authentication failures session management mfa rate limiting login">
+                        <div class="vuln-title"><span class="vuln-rank">A07</span><h3>Authentication Failures</h3></div>
+                        <p>Weaknesses in login, session, and identity handling — the 2025 name for what was "Identification and Authentication Failures" in 2021. Holds steady at #7.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>No rate limiting on login, session tokens that outlive logout, missing multi-factor on sensitive actions.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Check for lockout/rate-limiting on auth endpoints; confirm sessions are invalidated after logout and password change; examine password-reset token generation and expiry.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">Burp Intruder</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="integrity" data-search="software data integrity failures deserialization unsigned updates ci cd">
+                        <div class="vuln-title"><span class="vuln-rank">A08</span><h3>Software or Data Integrity Failures</h3></div>
+                        <p>Code or data gets trusted without verifying it hasn't been tampered with — insecure deserialization, unsigned auto-updates, a deploy pipeline that accepts unsigned artifacts.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>An endpoint that deserializes an object straight from client-supplied data; an update mechanism with no signature check.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Identify serialization formats in transit; test whether a tampered serialized object is still accepted; check whether update/deploy channels verify signatures.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">Manual protocol analysis</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="logging" data-search="security logging alerting monitoring failures">
+                        <div class="vuln-title"><span class="vuln-rank">A09</span><h3>Security Logging and Alerting Failures</h3></div>
+                        <p>Renamed in 2025 from "Logging and Monitoring Failures" to make the point explicit: logs existing isn't the same as anyone acting on them.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>Login failures, access-control denials, and admin actions that never generate a log entry or trigger an alert.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>During an authorized engagement, generate a deliberately suspicious event and check whether it surfaces anywhere the defenders would see it — this is more of a program-maturity question than a single exploit.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">Program review</span></div>
+                    </div>
+
+                    <div class="card vuln-card" data-tags="errors" data-search="mishandling exceptional conditions error handling fail open fail closed">
+                        <div class="vuln-title"><span class="vuln-rank">A10</span><h3>Mishandling of Exceptional Conditions</h3></div>
+                        <p>Brand new for 2025. Covers what happens when an app hits an error or edge case and fails open, leaks internals, or lands in an undefined state instead of failing closed.</p>
+                        <div class="vuln-section"><span class="vuln-section-label">On the wire</span><p>A stack trace exposing environment variables; access granted when a downstream permission check errors out instead of denying; an unexpected parameter reaching an unhandled code path.</p></div>
+                        <div class="vuln-section"><span class="vuln-section-label">Testing approach</span><p>Deliberately send malformed, oversized, or unexpected input and check whether the app fails safe or fails open; read every error response for anything it shouldn't say.</p></div>
+                        <div class="tool-tags"><span class="tool-tag">Manual fuzzing</span><span class="tool-tag">Burp Suite</span></div>
+                    </div>
+
+                </div>
+                <p id="vulnEmpty" style="display:none;text-align:center;color:var(--text-faint);padding:2rem 0;">No categories match that search.</p>
+                <p style="font-size:.85rem;margin-top:1.5rem;">Full detail and CWE mappings for every category: <a href="https://owasp.org/Top10/2025/" target="_blank" rel="noopener">owasp.org/Top10/2025</a>.</p>
+            </section>
+
+            <section id="advanced">
+                <div class="section-head">
+                    <div class="eyebrow">Beyond the basics</div>
+                    <h2>Advanced techniques</h2>
+                    <p>Once the fundamentals are automatic, these are the categories that separate a scanner report from an actual finding.</p>
+                </div>
+                <div class="grid">
+                    <div class="card">
+                        <h3><i class="fas fa-shuffle"></i>&nbsp; HTTP Request Smuggling</h3>
+                        <p>Front-end proxies and back-end servers sometimes disagree about where one request ends and the next begins — usually because <code>Content-Length</code> and <code>Transfer-Encoding</code> are both present and parsed differently by each hop. That disagreement lets one request "smuggle" a hidden second request past whatever the front end thought it was inspecting.</p>
+                        <div class="tool-tags"><span class="tool-tag">HTTP Request Smuggler (Burp)</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-bolt"></i>&nbsp; Race Conditions</h3>
+                        <p>Servers that check-then-act (check your balance, then debit it) are vulnerable if enough identical requests land in the same instant — before the first one finishes writing its result. Single-packet attack techniques make this reliable even over normal internet latency.</p>
+                        <div class="tool-tags"><span class="tool-tag">Turbo Intruder</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-key"></i>&nbsp; JWT Attacks</h3>
+                        <p>Tokens are only as trustworthy as the verification step. Watch for servers that read the algorithm from the token's own header instead of enforcing one server-side (an <code>alg: none</code> downgrade), weak or shared HMAC secrets, and <code>kid</code> header values that get fed straight into a file or key lookup.</p>
+                        <div class="tool-tags"><span class="tool-tag">jwt_tool</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-diagram-project"></i>&nbsp; GraphQL-specific risks</h3>
+                        <p>Introspection left enabled in production hands over the entire schema. Aliasing and batching can bypass a rate limit designed around one query per request. Nested queries can also be used to force expensive, resource-exhausting joins.</p>
+                        <div class="tool-tags"><span class="tool-tag">InQL</span><span class="tool-tag">GraphQL Voyager</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-plug"></i>&nbsp; WebSocket security</h3>
+                        <p>A WebSocket upgrade often inherits none of the REST API's authorization checks by default. Confirm the <code>Origin</code> header is validated on the handshake, and that every message is still authorized individually, not just the initial connection.</p>
+                        <div class="tool-tags"><span class="tool-tag">Burp WebSocket history</span></div>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-file-contract"></i>&nbsp; Business logic flaws</h3>
+                        <p>No scanner finds these reliably — they require actually understanding what the application is supposed to do, then testing what happens when steps are skipped, reordered, or repeated. Coupon stacking, negative quantities, and currency-rounding abuse all live here.</p>
+                        <div class="tool-tags"><span class="tool-tag">Manual testing</span></div>
                     </div>
                 </div>
-                
-                <div class="tab-content" id="response-headers">
-                    <h3>Important HTTP Response Headers</h3>
+
+                <div class="callout ok" style="margin-top:1.5rem;">
+                    <span class="callout-label"><i class="fas fa-graduation-cap"></i> Practice these legally</span>
+                    <p style="margin:0;">Every technique above has a free, deliberately-vulnerable sandbox built for practicing it without touching a real target: <a href="https://portswigger.net/web-security" target="_blank" rel="noopener">PortSwigger Web Security Academy</a> (hands-on labs for nearly everything on this page), <a href="https://owasp.org/www-project-juice-shop/" target="_blank" rel="noopener">OWASP Juice Shop</a>, <a href="https://owasp.org/www-project-webgoat/" target="_blank" rel="noopener">OWASP WebGoat</a>, and <a href="https://dvwa.co.uk/" target="_blank" rel="noopener">DVWA</a>.</p>
+                </div>
+            </section>
+
+            <section id="checklist">
+                <div class="section-head">
+                    <div class="eyebrow">Field checklist</div>
+                    <h2>Before you call it done</h2>
+                    <p>Not exhaustive, but this catches the categories people skip when they're moving fast. Progress resets when you reload the page — it's a session pass, not a saved report.</p>
+                </div>
+
+                <div class="checklist-progress">
+                    <div class="progress-track"><div class="progress-fill" id="checklistProgress"></div></div>
+                    <span class="checklist-progress-label" id="checklistLabel">0 / 0 checked</span>
+                </div>
+
+                <div class="checklist-group">
+                    <h4>Recon</h4>
+                    <div class="check-item"><input type="checkbox" id="c1"><label for="c1">Mapped every endpoint, including ones not linked from the UI (old API versions, admin routes, mobile-only endpoints)</label></div>
+                    <div class="check-item"><input type="checkbox" id="c2"><label for="c2">Identified frameworks, libraries, and versions in use, and cross-referenced known CVEs</label></div>
+                </div>
+                <div class="checklist-group">
+                    <h4>Authentication &amp; session</h4>
+                    <div class="check-item"><input type="checkbox" id="c3"><label for="c3">Tested rate limiting and lockout on login, password reset, and MFA endpoints</label></div>
+                    <div class="check-item"><input type="checkbox" id="c4"><label for="c4">Confirmed sessions are invalidated server-side after logout and password change</label></div>
+                </div>
+                <div class="checklist-group">
+                    <h4>Access control</h4>
+                    <div class="check-item"><input type="checkbox" id="c5"><label for="c5">Tested horizontal privilege escalation (another user's data) on every object-returning endpoint</label></div>
+                    <div class="check-item"><input type="checkbox" id="c6"><label for="c6">Tested vertical privilege escalation (admin-only actions) from a low-privilege account</label></div>
+                    <div class="check-item"><input type="checkbox" id="c7"><label for="c7">Checked CORS configuration for reflected origins combined with credentialed requests</label></div>
+                </div>
+                <div class="checklist-group">
+                    <h4>Input handling</h4>
+                    <div class="check-item"><input type="checkbox" id="c8"><label for="c8">Tested injection contexts (SQL, command, template, NoSQL) on every user-controlled field</label></div>
+                    <div class="check-item"><input type="checkbox" id="c9"><label for="c9">Tested for mass assignment by adding undocumented fields to write requests</label></div>
+                    <div class="check-item"><input type="checkbox" id="c10"><label for="c10">Verified XML endpoints reject external entity references (XXE)</label></div>
+                </div>
+                <div class="checklist-group">
+                    <h4>Transport &amp; headers</h4>
+                    <div class="check-item"><input type="checkbox" id="c11"><label for="c11">Confirmed HTTPS is enforced and HSTS is present with a sane max-age</label></div>
+                    <div class="check-item"><input type="checkbox" id="c12"><label for="c12">Reviewed CSP, X-Content-Type-Options, and cookie flags on every response</label></div>
+                </div>
+                <div class="checklist-group">
+                    <h4>Business logic &amp; reporting</h4>
+                    <div class="check-item"><input type="checkbox" id="c13"><label for="c13">Walked the intended workflow out of order to look for logic bypasses</label></div>
+                    <div class="check-item"><input type="checkbox" id="c14"><label for="c14">Every finding has clear reproduction steps, impact, and a suggested fix before submission</label></div>
+                </div>
+            </section>
+
+            <section id="toolkit">
+                <div class="section-head">
+                    <div class="eyebrow">Toolkit</div>
+                    <h2>What's actually in the bag</h2>
+                    <p>Fewer tools used well beats a long list used badly. This is the working set most bug hunters reach for, grouped by job.</p>
+                </div>
+
+                <div class="tool-group">
+                    <h4>Intercepting proxies</h4>
                     <div class="grid">
-                        <div class="card">
-                            <h4>Set-Cookie</h4>
-                            <p>Sets cookies in the client's browser.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Check for missing Secure, HttpOnly, or SameSite flags which can lead to session hijacking.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Content-Security-Policy</h4>
-                            <p>Defines allowed sources for content to prevent XSS.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Weak or missing CSP can allow XSS attacks. Test for bypasses using unsafe-inline or data: URIs.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Strict-Transport-Security</h4>
-                            <p>Forces browsers to use HTTPS.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Missing HSTS headers can allow downgrade attacks. Check for proper max-age and includeSubDomains directives.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>X-Content-Type-Options</h4>
-                            <p>Prevents MIME type sniffing.</p>
-                            <div class="highlight">
-                                <p><strong>Security Note:</strong> Missing this header can lead to content sniffing attacks. Should be set to "nosniff".</p>
-                            </div>
-                        </div>
+                        <div class="card tool-card"><h4><i class="fas fa-bug"></i> Burp Suite</h4><p>The default choice — Repeater, Intruder, and its extension ecosystem cover most of this entire page.</p></div>
+                        <div class="card tool-card"><h4><i class="fas fa-bolt"></i> OWASP ZAP</h4><p>Free and open source, with active and passive scanning built in.</p></div>
+                        <div class="card tool-card"><h4><i class="fas fa-arrows-left-right"></i> mitmproxy</h4><p>Scriptable, terminal-first proxy — good for automating repetitive traffic manipulation.</p></div>
                     </div>
-                    
-                    <h4>Additional Security Headers</h4>
+                </div>
+
+                <div class="tool-group">
+                    <h4>Recon &amp; discovery</h4>
                     <div class="grid">
-                        <div class="card">
-                            <h4>X-Frame-Options</h4>
-                            <p>Prevents clickjacking by controlling iframe embedding.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Should be set to DENY or SAMEORIGIN. Missing this header allows clickjacking attacks.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Referrer-Policy</h4>
-                            <p>Controls how much referrer information is included in requests.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Prevents leakage of sensitive URL parameters to external sites.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <h4>Feature-Policy</h4>
-                            <p>Allows control over which browser features can be used.</p>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Restricting features like camera, microphone, or geolocation enhances privacy.</p>
-                            </div>
-                        </div>
+                        <div class="card tool-card"><h4><i class="fas fa-network-wired"></i> Nmap</h4><p>Network and service discovery — what's actually listening before you touch HTTP at all.</p></div>
+                        <div class="card tool-card"><h4><i class="fas fa-sitemap"></i> Amass / subfinder</h4><p>Subdomain enumeration to map the real attack surface, not just the main domain.</p></div>
+                        <div class="card tool-card"><h4><i class="fas fa-list-check"></i> httpx</h4><p>Fast bulk probing of live hosts once you have a subdomain list.</p></div>
                     </div>
                 </div>
-                
-                <div class="tab-content" id="response-body">
-                    <h3>HTTP Response Body</h3>
-                    <p>The response body contains the actual data returned by the server. This can be HTML, JSON, XML, or any other format.</p>
-                    
+
+                <div class="tool-group">
+                    <h4>Fuzzing &amp; injection</h4>
                     <div class="grid">
-                        <div class="card">
-                            <h4>HTML Responses</h4>
-                            <p>Typically returned for web pages.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-&lt;html&gt;
-&lt;head&gt;
-  &lt;title&gt;User Dashboard&lt;/title&gt;
-&lt;/head&gt;
-&lt;body&gt;
-  &lt;h1&gt;Welcome, admin&lt;/h1&gt;
-  &lt;div&gt;Your user ID is 123&lt;/div&gt;
-&lt;/body&gt;
-&lt;/html&gt;
-                            </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Check for sensitive data in HTML comments, hidden fields, or JavaScript variables.</p>
-                            </div>
+                        <div class="card tool-card"><h4><i class="fas fa-database"></i> sqlmap</h4><p>Automated SQL injection detection and exploitation, for authorized testing.</p></div>
+                        <div class="card tool-card"><h4><i class="fas fa-terminal"></i> ffuf</h4><p>Fast, flexible fuzzer for paths, parameters, and headers alike.</p></div>
+                        <div class="card tool-card"><h4><i class="fas fa-code"></i> Commix</h4><p>Automated OS command injection detection.</p></div>
+                    </div>
+                </div>
+
+                <div class="tool-group">
+                    <h4>APIs &amp; tokens</h4>
+                    <div class="grid">
+                        <div class="card tool-card"><h4><i class="fas fa-wind"></i> Postman / Insomnia</h4><p>API request building and collection sharing — good for documenting a target's surface as you map it.</p></div>
+                        <div class="card tool-card"><h4><i class="fas fa-key"></i> jwt_tool</h4><p>Purpose-built for probing JWT implementations for the weaknesses covered in Advanced techniques.</p></div>
+                    </div>
+                </div>
+
+                <div class="tool-group">
+                    <h4>Browser-side</h4>
+                    <div class="grid">
+                        <div class="card tool-card"><h4><i class="fas fa-code"></i> Browser DevTools</h4><p>Free, built-in, and the first place to watch real traffic before reaching for anything heavier.</p></div>
+                        <div class="card tool-card"><h4>Cookie-Editor</h4><p>View, edit, and forge cookies directly in the browser.</p></div>
+                        <div class="card tool-card"><h4>Wappalyzer</h4><p>Fingerprints frameworks and libraries a site is running.</p></div>
+                        <div class="card tool-card"><h4>Retire.js</h4><p>Flags known-vulnerable JavaScript libraries in the page.</p></div>
+                    </div>
+                </div>
+
+                <div class="tool-group">
+                    <h4>Command line basics</h4>
+                    <div class="grid">
+                        <div class="card tool-card"><h4><i class="fas fa-terminal"></i> curl</h4><p>The lowest-level way to send exactly the request you mean to, nothing implied.</p></div>
+                        <div class="card tool-card"><h4>httpie</h4><p>Same job as curl, friendlier syntax and output for quick manual checks.</p></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="responsible-testing">
+                <div class="section-head">
+                    <div class="eyebrow">Before you submit anything</div>
+                    <h2>Responsible testing &amp; disclosure</h2>
+                    <p>Technique is only half the job. Scope, authorization, and how you report a finding are what separate a bug bounty payout from a criminal complaint — and they're not optional reading.</p>
+                </div>
+
+                <div class="grid">
+                    <div class="card">
+                        <h3><i class="fas fa-file-signature"></i>&nbsp; Stay inside written scope</h3>
+                        <p>A bug bounty program's scope document is a contract, not a suggestion — it lists exactly which domains, apps, and test types are authorized, and what's explicitly off-limits (often things like physical attacks, social engineering of staff, or denial-of-service testing).</p>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-hand"></i>&nbsp; Don't cause damage to prove a point</h3>
+                        <p>Once you've confirmed a finding — a first successful SQL injection, an IDOR that returns another user's record — stop. Mass data extraction, account creation at scale, or destructive writes turn a valid finding into real harm, and most programs will disqualify or ban for it.</p>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-clock"></i>&nbsp; Follow coordinated disclosure timelines</h3>
+                        <p>Give the vendor a reasonable window to fix a confirmed issue before any public write-up — typically 90 days is treated as an industry norm, though a program's own policy always takes precedence.</p>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-scale-balanced"></i>&nbsp; Know the legal baseline</h3>
+                        <p>Testing systems without authorization can violate computer-crime law even when no damage occurs and the intent was good faith — the U.S. Computer Fraud and Abuse Act and similar statutes elsewhere don't require malicious intent to apply. This isn't legal advice; when in doubt, get explicit written permission first.</p>
+                    </div>
+                </div>
+
+                <div class="callout" style="margin-top:1.5rem;">
+                    <span class="callout-label"><i class="fas fa-door-open"></i> Where authorized testing actually happens</span>
+                    <p style="margin:0;">Bug bounty platforms formalize scope and safe harbor so you're never guessing: <a href="https://hackerone.com" target="_blank" rel="noopener">HackerOne</a>, <a href="https://bugcrowd.com" target="_blank" rel="noopener">Bugcrowd</a>, <a href="https://www.intigriti.com" target="_blank" rel="noopener">Intigriti</a>, and <a href="https://yeswehack.com" target="_blank" rel="noopener">YesWeHack</a> are the largest. Read the program's policy in full before your first request.</p>
+                </div>
+            </section>
+
+            <section id="quiz">
+                <div class="section-head">
+                    <div class="eyebrow">Knowledge check</div>
+                    <h2>Test what stuck</h2>
+                    <p>Seven questions, including a couple on what actually changed in the 2025 OWASP update.</p>
+                </div>
+
+                <div id="quizList">
+                    <div class="card quiz-card" data-qid="q1" data-correct="1">
+                        <h3>1. Which of these methods is <em>not</em> expected to be idempotent?</h3>
+                        <div class="quiz-options">
+                            <label class="quiz-option"><input type="radio" name="q1" value="0"> GET</label>
+                            <label class="quiz-option"><input type="radio" name="q1" value="1"> POST</label>
+                            <label class="quiz-option"><input type="radio" name="q1" value="2"> PUT</label>
+                            <label class="quiz-option"><input type="radio" name="q1" value="3"> DELETE</label>
                         </div>
-                        
-                        <div class="card">
-                            <h4>JSON Responses</h4>
-                            <p>Common in APIs and modern web applications.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-{
-  "status": "success",
-  "data": {
-    "user": {
-      "id": 123,
-      "username": "admin",
-      "email": "admin@example.com",
-      "role": "administrator"
-    }
-  }
-}
-                            </div>
-                            <div class="security-tip">
-                                <p><strong>Testing Tip:</strong> Look for information disclosure in JSON responses, especially in error messages.</p>
-                            </div>
+                        <div class="quiz-explain">POST typically creates a resource or triggers an action each time it's called. GET, PUT, and DELETE are all defined to be idempotent — repeating them shouldn't change the outcome further, even though real implementations sometimes get this wrong.</div>
+                    </div>
+
+                    <div class="card quiz-card" data-qid="q2" data-correct="1">
+                        <h3>2. In the OWASP Top 10:2025, which category absorbed SSRF, previously its own standalone category?</h3>
+                        <div class="quiz-options">
+                            <label class="quiz-option"><input type="radio" name="q2" value="0"> A05 Injection</label>
+                            <label class="quiz-option"><input type="radio" name="q2" value="1"> A01 Broken Access Control</label>
+                            <label class="quiz-option"><input type="radio" name="q2" value="2"> A03 Software Supply Chain Failures</label>
+                            <label class="quiz-option"><input type="radio" name="q2" value="3"> A10 Mishandling of Exceptional Conditions</label>
                         </div>
-                        
-                        <div class="card">
-                            <h4>XML Responses</h4>
-                            <p>Used in SOAP APIs and some legacy systems.</p>
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>Example</span>
-                                    <button class="copy-btn">Copy</button>
-                                </div>
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;response&gt;
-  &lt;status&gt;success&lt;/status&gt;
-  &lt;user&gt;
-    &lt;id&gt;123&lt;/id&gt;
-    &lt;username&gt;admin&lt;/username&gt;
-    &lt;email&gt;admin@example.com&lt;/email&gt;
-  &lt;/user&gt;
-&lt;/response&gt;
-                            </div>
-                            <div class="danger">
-                                <p><strong>Security Risk:</strong> Check for XXE vulnerabilities in XML responses.</p>
-                            </div>
+                        <div class="quiz-explain">SSRF was folded into Broken Access Control in the 2025 edition, which also now explicitly covers BOLA and BFLA-style API authorization failures.</div>
+                    </div>
+
+                    <div class="card quiz-card" data-qid="q3" data-correct="1">
+                        <h3>3. Which status code indicates a resource was created successfully?</h3>
+                        <div class="quiz-options">
+                            <label class="quiz-option"><input type="radio" name="q3" value="0"> 200 OK</label>
+                            <label class="quiz-option"><input type="radio" name="q3" value="1"> 201 Created</label>
+                            <label class="quiz-option"><input type="radio" name="q3" value="2"> 204 No Content</label>
+                            <label class="quiz-option"><input type="radio" name="q3" value="3"> 202 Accepted</label>
                         </div>
+                        <div class="quiz-explain">201 specifically signals that a new resource now exists, often alongside a Location header pointing to it.</div>
                     </div>
-                    
-                    <div class="highlight">
-                        <p><strong>Bug Hunter Tip:</strong> Always examine response bodies for information disclosure, even in error messages. Also check for inconsistent responses that might indicate application logic flaws.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <section id="interactive-demo">
-            <h2>Interactive HTTP Request Demo</h2>
-            <div class="interactive-demo">
-                <p>Use this demo to experiment with different HTTP requests and see the responses. Try various methods, headers, and body content to understand how servers respond.</p>
-                
-                <div class="demo-controls">
-                    <select id="http-method">
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                        <option value="PUT">PUT</option>
-                        <option value="DELETE">DELETE</option>
-                        <option value="PATCH">PATCH</option>
-                        <option value="HEAD">HEAD</option>
-                        <option value="OPTIONS">OPTIONS</option>
-                    </select>
-                    
-                    <input type="text" id="request-url" placeholder="Enter URL" value="https://jsonplaceholder.typicode.com/posts/1">
-                    
-                    <button id="send-request"><i class="fas fa-paper-plane"></i> Send Request</button>
-                    <button id="reset-demo" class="btn-danger"><i class="fas fa-redo"></i> Reset</button>
-                </div>
-                
-                <div>
-                    <h4>Request Headers (JSON format)</h4>
-                    <textarea id="request-headers" rows="3" placeholder='{"Content-Type": "application/json", "Authorization": "Bearer token123"}'></textarea>
-                </div>
-                
-                <div id="request-body-container">
-                    <h4>Request Body</h4>
-                    <textarea id="request-body" rows="5" placeholder='{"title": "test", "body": "content", "userId": 1}'></textarea>
-                </div>
-                
-                <div class="progress-container">
-                    <div class="progress-bar" id="request-progress"></div>
-                </div>
-                
-                <div>
-                    <h4>Request</h4>
-                    <div class="request-view" id="request-view">
-                        <!-- Request will be displayed here -->
-                    </div>
-                </div>
-                
-                <div>
-                    <h4>Response</h4>
-                    <div class="response-view" id="response-view">
-                        <!-- Response will be displayed here -->
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <section id="bug-hunting-tips">
-            <h2>Bug Hunting Tips & Common Vulnerabilities</h2>
-            
-            <div class="search-box">
-                <input type="text" id="vulnerability-search" placeholder="Search vulnerabilities...">
-                <button id="search-btn"><i class="fas fa-search"></i> Search</button>
-            </div>
-            
-            <div class="vulnerability-list" id="vulnerability-list">
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-database"></i> Injection Attacks</div>
-                    <p>Occur when untrusted data is sent to an interpreter as part of a command or query.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Send special characters, SQL commands, or script tags in parameters and observe responses for errors or unexpected behavior. Test for SQLi, NoSQLi, OS command injection, and LDAP injection.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> SQLmap, NoSQLmap, Commix</p>
-                    </div>
-                </div>
-                  <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-user-lock"></i> Broken Authentication</div>
-                    <p>Flaws in authentication mechanisms allow attackers to compromise passwords or session tokens.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Test for weak password policies, session fixation, credential stuffing, or lack of rate limiting on login endpoints. Check for exposed session tokens in URLs or logs.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> Burp Suite, OWASP ZAP, custom scripts</p>
-                    </div>
-                </div>
-                
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-eye"></i> Sensitive Data Exposure</div>
-                    <p>Applications may not properly protect sensitive data like passwords or personal information.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Check if data is transmitted over unencrypted channels, if passwords are hashed properly, or if sensitive data is exposed in responses. Look for PII, credentials, or API keys in client-side code.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> Burp Suite, browser dev tools, grep</p>
-                    </div>
-                </div>
-                
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-code"></i> XML External Entities (XXE)</div>
-                    <p>Poorly configured XML processors evaluate external entity references within XML documents.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Send XML with external entity references to endpoints that process XML and observe if they're resolved. Try to read local files or initiate SSRF attacks.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> XXE Injector, custom payloads</p>
-                    </div>
-                </div>
-                
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-shield-alt"></i> Broken Access Control</div>
-                    <p>Restrictions on what authenticated users can do are not properly enforced.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Try to access resources belonging to other users, escalate privileges, or bypass authorization checks by manipulating request parameters. Test for IDOR, privilege escalation, and CORS misconfigurations.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> Burp Suite, Autorize extension</p>
-                    </div>
-                </div>
-                
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-cogs"></i> Security Misconfigurations</div>
-                    <p>Insecure configurations in any part of the application stack.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Check for default credentials, unnecessary services, verbose error messages, missing security headers, or exposed administrative interfaces.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> Nmap, Nikto, security headers scanners</p>
-                    </div>
-                </div>
-                
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-desktop"></i> Cross-Site Scripting (XSS)</div>
-                    <p>Allows attackers to inject client-side scripts into web pages viewed by other users.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Inject script payloads into all user-input areas and observe if they're executed. Test for reflected, stored, and DOM-based XSS.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> XSS Hunter, BeEF, manual testing</p>
-                    </div>
-                </div>
-                
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-exchange-alt"></i> Cross-Site Request Forgery (CSRF)</div>
-                    <p>Tricks users into executing unwanted actions in a web application they're authenticated to.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Create malicious pages that submit requests to the target application and check if they're executed without user interaction. Test state-changing operations.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> CSRF PoC generators, Burp Suite</p>
-                    </div>
-                </div>
-                
-                <div class="vulnerability-item">
-                    <div class="vulnerability-title"><i class="fas fa-server"></i> Server-Side Request Forgery (SSRF)</div>
-                    <p>Allows attackers to make requests from the server to internal or external resources.</p>
-                    <div class="highlight">
-                        <p><strong>Testing Approach:</strong> Manipulate URL parameters to make the server request internal resources or external domains you control. Test for access to metadata services in cloud environments.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p><strong>Tools:</strong> Burp Collaborator, SSRF testing servers</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <section id="advanced-techniques">
-            <h2>Advanced Bug Hunting Techniques</h2>
-            
-            <div class="grid">
-                <div class="card">
-                    <h3><i class="fas fa-random"></i> HTTP Request Smuggling</h3>
-                    <p>Exploits differences in how servers parse HTTP requests to bypass security controls.</p>
-                    <div class="highlight">
-                        <p><strong>Technique:</strong> Send requests with conflicting Content-Length and Transfer-Encoding headers to poison the request queue.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p>Test with tools like HTTP Request Smuggler or manually craft requests with TE.CL or CL.TE vulnerabilities.</p>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3><i class="fas fa-bolt"></i> Race Conditions</h3>
-                    <p>Exploits timing vulnerabilities in concurrent processing.</p>
-                    <div class="highlight">
-                        <p><strong>Technique:</strong> Send multiple requests simultaneously to exploit limits, balances, or resource allocation.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p>Use tools like Turbo Intruder in Burp Suite or write custom scripts to send concurrent requests.</p>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h3><i class="fas fa-project-diagram"></i> API Testing</h3>
-                    <p>Focuses on finding vulnerabilities in API endpoints.</p>
-                    <div class="highlight">
-                        <p><strong>Technique:</strong> Test for mass assignment, broken object level authorization, and excessive data exposure.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p>Use tools like Postman, Insomnia, or Burp Suite with API-specific extensions.</p>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h3><i class="fas fa-file-contract"></i> Business Logic Flaws</h3>
-                    <p>Exploits flaws in application workflow rather than technical vulnerabilities.</p>
-                    <div class="highlight">
-                        <p><strong>Technique:</strong> Manipulate application flow to bypass intended restrictions or exploit pricing, inventory, or workflow logic.</p>
-                    </div>
-                    <div class="security-tip">
-                        <p>Requires deep understanding of application functionality. Manual testing is most effective.</p>
-                    </div>
-                </div>
-            </div>
-            
-            </div>
-            
-            <h3>Bug Hunter's Checklist</h3>
-            <ul class="checklist">
-                <li class="checklist-item">
-                    <input type="checkbox" id="check1">
-                    <label for="check1">Test all user inputs for injection vulnerabilities</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check2">
-                    <label for="check2">Verify authentication and session management mechanisms</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check3">
-                    <label for="check3">Check for sensitive data exposure in requests and responses</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check4">
-                    <label for="check4">Test access controls for horizontal and vertical privilege escalation</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check5">
-                    <label for="check5">Validate all security headers are properly implemented</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check6">
-                    <label for="check6">Test for CSRF vulnerabilities on state-changing operations</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check7">
-                    <label for="check7">Check for XSS vulnerabilities in all reflected and stored inputs</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check8">
-                    <label for="check8">Test for XXE in XML processing endpoints</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check9">
-                    <label for="check9">Verify proper error handling without information disclosure</label>
-                </li>
-                <li class="checklist-item">
-                    <input type="checkbox" id="check10">
-                    <label for="check10">Test for business logic flaws and workflow bypasses</label>
-                </li>
-            </ul>
-        </section>
-        
-        <section id="tools">
-            <h2>Essential Tools for Bug Hunters</h2>
-            <p>These tools help intercept, analyze, and manipulate HTTP traffic:</p>
-            
-            <div class="tool-list">
-                <div class="tool-item">
-                    <h4><i class="fas fa-bug"></i> Burp Suite</h4>
-                    <p>Comprehensive web application security testing platform</p>
-                </div>
-                <div class="tool-item">
-                    <h4><i class="fas fa-bolt"></i> OWASP ZAP</h4>
-                    <p>Free and open source web application security scanner</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4><i class="fas fa-wind"></i> Postman</h4>
-                    <p>API development and testing environment</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4><i class="fas fa-terminal"></i> curl</h4>
-                    <p>Command line tool for transferring data with URL syntax</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4><i class="fas fa-code"></i> Browser DevTools</h4>
-                    <p>Built-in browser tools for inspecting network activity</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4><i class="fas fa-network-wired"></i> Nmap</h4>
-                    <p>Network discovery and security auditing tool</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4><i class="fas fa-database"></i> SQLmap</h4>
-                    <p>Automatic SQL injection and database takeover tool</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4><i class="fas fa-file-code"></i> XXE Injector</h4>
-                    <p>Tool for finding and exploiting XXE vulnerabilities</p>
-                </div>
-            </div>
-            
-            <h3>Browser Extensions</h3>
-            <div class="tool-list">
-                <div class="tool-item">
-                    <h4>Cookie Editor</h4>
-                    <p>View, edit, and create cookies</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4>Wappalyzer</h4>
-                    <p>Identify technologies on websites</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4>Retire.js</h4>
-                    <p>Scan for vulnerable JavaScript libraries</p>
-                </div>
-                
-                <div class="tool-item">
-                    <h4>Hack-Tools</h4>
-                    <p>Collection of pentesting tools in browser</p>
-                </div>
-            </div>
-                
-            </div>
-        </section>
-        
-        <section id="quiz">
-            <h2>Test Your Knowledge</h2>
-            <div class="quiz-container">
-                <div class="quiz-question">
-                    <h3>Question 1: Which HTTP method should be used to retrieve data without modifying it?</h3>
-                    <div class="quiz-options">
-                        <div class="quiz-option" data-correct="true">
-                            <input type="radio" name="q1" id="q1a">
-                            <label for="q1a">GET</label>
+
+                    <div class="card quiz-card" data-qid="q4" data-correct="1">
+                        <h3>4. Which header is the modern, most reliable way to prevent clickjacking?</h3>
+                        <div class="quiz-options">
+                            <label class="quiz-option"><input type="radio" name="q4" value="0"> X-Content-Type-Options</label>
+                            <label class="quiz-option"><input type="radio" name="q4" value="1"> Content-Security-Policy: frame-ancestors</label>
+                            <label class="quiz-option"><input type="radio" name="q4" value="2"> Referrer-Policy</label>
+                            <label class="quiz-option"><input type="radio" name="q4" value="3"> Cache-Control</label>
                         </div>
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q1" id="q1b">
-                            <label for="q1b">POST</label>
-                        </div>
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q1" id="q1c">
-                            <label for="q1c">PUT</label>
-                        </div>
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q1" id="q1d">
-                            <label for="q1d">DELETE</label>
-                        </div>
+                        <div class="quiz-explain">X-Frame-Options still works and is fine as a fallback, but CSP's frame-ancestors directive is the current standard and takes precedence where both are supported.</div>
                     </div>
-                    <div class="quiz-result" id="q1-result"></div>
-                </div>
-                
-            <div class="quiz-question">
-                    <h3>Question 2: What status code indicates a successful resource creation?</h3>
-                    <div class="quiz-options">
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q2" id="q2a">
-                            <label for="q2a">200 OK</label>
+
+                    <div class="card quiz-card" data-qid="q5" data-correct="0">
+                        <h3>5. Which CORS setup lets an attacker's site read a victim's authenticated API responses?</h3>
+                        <div class="quiz-options">
+                            <label class="quiz-option"><input type="radio" name="q5" value="0"> Reflecting any Origin value back while Access-Control-Allow-Credentials is true</label>
+                            <label class="quiz-option"><input type="radio" name="q5" value="1"> Setting Access-Control-Allow-Origin to one fixed, trusted domain</label>
+                            <label class="quiz-option"><input type="radio" name="q5" value="2"> Omitting CORS headers entirely</label>
+                            <label class="quiz-option"><input type="radio" name="q5" value="3"> Setting Cache-Control: no-store</label>
                         </div>
-                        <div class="quiz-option" data-correct="true">
-                            <input type="radio" name="q2" id="q2b">
-                            <label for="q2b">201 Created</label>
-                        </div>
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q2" id="q2c">
-                            <label for="q2c">204 No Content</label>
-                        </div>
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q2" id="q2d">
-                            <label for="q2d">301 Moved Permanently</label>
-                        </div>
+                        <div class="quiz-explain">Dynamically reflecting whatever Origin a request sends, combined with allowing credentials, effectively lets any site make authenticated requests on a logged-in victim's behalf and read the result.</div>
                     </div>
-                    <div class="quiz-result" id="q2-result"></div>
-                </div>
-                
-                <div class="quiz-question">
-                    <h3>Question 3: Which header should be set to prevent clickjacking attacks?</h3>
-                    <div class="quiz-options">
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q3" id="q3a">
-                            <label for="q3a">Content-Security-Policy</label>
+
+                    <div class="card quiz-card" data-qid="q6" data-correct="1">
+                        <h3>6. An API decides how to verify a JWT's signature based on the "alg" field inside the token itself. What's the risk?</h3>
+                        <div class="quiz-options">
+                            <label class="quiz-option"><input type="radio" name="q6" value="0"> None — this is standard, secure practice</label>
+                            <label class="quiz-option"><input type="radio" name="q6" value="1"> An attacker can set alg to something weak (or "none") to get a forged token accepted</label>
+                            <label class="quiz-option"><input type="radio" name="q6" value="2"> It only affects token size, not security</label>
+                            <label class="quiz-option"><input type="radio" name="q6" value="3"> It's only a risk for tokens longer than 256 bytes</label>
                         </div>
-                        <div class="quiz-option" data-correct="true">
-                            <input type="radio" name="q3" id="q3b">
-                            <label for="q3b">X-Frame-Options</label>
-                        </div>
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q3" id="q3c">
-                            <label for="q3c">Strict-Transport-Security</label>
-                        </div>
-                        <div class="quiz-option" data-correct="false">
-                            <input type="radio" name="q3" id="q3d">
-                            <label for="q3d">X-Content-Type-Options</label>
-                        </div>
+                        <div class="quiz-explain">The server — not the token — must decide which algorithm is acceptable. Trusting the token's own header for that decision is how "alg: none" and algorithm-confusion attacks succeed.</div>
                     </div>
-                    <div class="quiz-result" id="q3-result"></div>
+
+                    <div class="card quiz-card" data-qid="q7" data-correct="1">
+                        <h3>7. HTTP request smuggling exploits disagreement between a front-end and back-end server about...</h3>
+                        <div class="quiz-options">
+                            <label class="quiz-option"><input type="radio" name="q7" value="0"> Which TLS version to negotiate</label>
+                            <label class="quiz-option"><input type="radio" name="q7" value="1"> Where one request ends and the next begins</label>
+                            <label class="quiz-option"><input type="radio" name="q7" value="2"> Which HTTP method was used</label>
+                            <label class="quiz-option"><input type="radio" name="q7" value="3"> The character encoding of the response body</label>
+                        </div>
+                        <div class="quiz-explain">Usually caused by conflicting Content-Length and Transfer-Encoding headers being parsed differently by each hop, letting one request smuggle a hidden second one past the front end.</div>
+                    </div>
                 </div>
-                
-                <button id="check-quiz" class="btn-success"><i class="fas fa-check-circle"></i> Check Answers</button>
-                <button id="reset-quiz" class="btn-danger"><i class="fas fa-redo"></i> Reset Quiz</button>
-            </div>
-        </section>
-    </div>
-    
+
+                <div class="quiz-actions">
+                    <button class="btn btn-success" id="checkQuiz"><i class="fas fa-check-circle"></i> Check answers</button>
+                    <button class="btn btn-danger" id="resetQuiz"><i class="fas fa-rotate-left"></i> Reset</button>
+                </div>
+                <div class="quiz-summary" id="quizSummary">
+                    <span class="big" id="quizScore">–</span>
+                    <span id="quizScoreLabel" style="color:var(--text-dim);">Answer every question, then check.</span>
+                </div>
+            </section>
+
+        </div><!-- /.container -->
+    </main>
+
     <footer>
         <div class="container">
-            <p>Complete HTTP Request & Response Guide for Bug Hunters</p>
-            <p>Remember: Always get proper authorization before testing websites and follow responsible disclosure practices.</p>
-            <p>Contribute to this guide on <a href="#" style="color: var(--accent);">GitHub</a></p>
+            <p>HTTP for Bug Hunters — a reference guide, not a scanner. It won't find anything for you; it just makes the protocol harder to overlook.</p>
+            <p>Vulnerability categories follow the OWASP Top 10:2025. Always test with authorization.</p>
+            <div class="foot-links">
+                <a href="https://owasp.org/Top10/2025/" target="_blank" rel="noopener">OWASP Top 10:2025</a>
+                <a href="https://portswigger.net/web-security" target="_blank" rel="noopener">Web Security Academy</a>
+                <a href="#responsible-testing">Responsible testing</a>
+            </div>
         </div>
     </footer>
 
