@@ -37,7 +37,6 @@
   --ink:#F5F4F0;
   --panel:#FFFFFF;
   --panel-2:#EFEEE9;
-  --panel-3:#E7E5DE;
   --line:#DEDCD3;
   --line-soft:#E9E7E0;
   --text:#1C1F26;
@@ -440,4 +439,112 @@ footer .foot-links{display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:.8rem;font-
   .container{padding:0 1.1rem;}
   section{padding:2.5rem 0;}
   .flow-step{grid-template-columns:36px 1fr;}
+}
+
+/* ============================================================
+   MOBILE EXPERIENCE IMPROVEMENTS (Added by Grok)
+   ============================================================ */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+
+  section {
+    padding: 2rem 0;
+    scroll-margin-top: 4rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+  }
+
+  .hero-grid {
+    gap: 1.5rem;
+  }
+
+  .section-nav-list {
+    gap: 0.3rem;
+    padding: 0.5rem 0;
+  }
+
+  .section-nav-list a {
+    font-size: 0.72rem;
+    padding: 0.4rem 0.7rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .console-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .status-row {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .flow-step {
+    grid-template-columns: 36px 1fr;
+  }
+
+  .card {
+    padding: 1.1rem;
+  }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+  }
+
+  .tab {
+    padding: 0.55rem 0.9rem;
+    font-size: 0.78rem;
+  }
+
+  .console {
+    padding: 1.1rem;
+  }
+
+  .preset-row {
+    gap: 0.4rem;
+  }
+
+  .preset-chip {
+    font-size: 0.68rem;
+    padding: 0.3rem 0.6rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .section-nav {
+    position: static;
+  }
+
+  .hero-cta {
+    flex-direction: column;
+  }
+
+  .hero-cta .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Improve touch targets */
+button, .btn, .preset-chip, .filter-chip, .quiz-option, .check-item {
+  min-height: 44px;
+}
+
+/* Better code blocks on mobile */
+pre.code, .panel-body {
+  font-size: 0.78rem;
+  padding: 0.85rem;
 }
